@@ -113,6 +113,31 @@ func (n *Notifier) sendTelegram(text string) error {
 	return nil
 }
 
+func (n *Notifier) sendNtfy(message, title string, priority int, tags string) error {
+	if n.Config.NtfyTopic == "" {
+		return nil
+	}
+	url := fmt.Sprintf("https://ntfy.sh/%s", n.Config.NtfyTopic)
+	req, err := http.NewRequest("POST", url, bytes.NewBufferString(message))
+	if err != nil {
+		return err
+	}
+	req.Header.Set("Title", title)
+	req.Header.Set("Priority", fmt.Sprintf("%d", priority))
+	req.Header.Set("Tags", tags)
+	req.Header.Set("Markdown", "yes")
+
+	resp, err := n.Client.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode >= 400 {
+		return fmt.Errorf("ntfy failed: %d", resp.StatusCode)
+	}
+	return nil
+}
+
 func (n *Notifier) SendSuccess(account, instanceID, region string) error {
 	var errs []error
 
@@ -144,6 +169,18 @@ func (n *Notifier) SendSuccess(account, instanceID, region string) error {
 			msg = "🚨 <b>ATTENTION!</b> 🚨\n\n" + msg
 		}
 		if err := n.sendTelegram(msg); err != nil {
+			errs = append(errs, err)
+		}
+	}
+
+	// 3. Ntfy
+	if n.Config.NtfyTopic != "" {
+		msg := fmt.Sprintf("**Instance Launched!**\n\n**Account:** %s\n**Region:** %s\n**ID:** `%s`", account, region, instanceID)
+		priority := 4 // High
+		if n.Config.InsistentPing {
+			priority = 5 // Max/Urgent
+		}
+		if err := n.sendNtfy(msg, "🚀 OCI Provision Success", priority, "tada,rocket"); err != nil {
 			errs = append(errs, err)
 		}
 	}
@@ -190,6 +227,15 @@ func (n *Notifier) SendDigest(stats Stats) error {
 		msg := fmt.Sprintf("<b>📊 Daily Digest</b>\n\n🕒 <b>Uptime:</b> %s\n🔄 <b>Cycles:</b> %d\n⚠️ <b>Capacity Hits:</b> %d\n❌ <b>Errors:</b> %d",
 			uptime.String(), stats.TotalCycles, stats.CapacityErrors, stats.OtherErrors)
 		if err := n.sendTelegram(msg); err != nil {
+			errs = append(errs, err)
+		}
+	}
+
+	// Ntfy
+	if n.Config.NtfyTopic != "" {
+		msg := fmt.Sprintf("**Daily Digest**\n\n🕒 **Uptime:** %s\n🔄 **Cycles:** %d\n⚠️ **Capacity Hits:** %d\n❌ **Errors:** %d",
+			uptime.String(), stats.TotalCycles, stats.CapacityErrors, stats.OtherErrors)
+		if err := n.sendNtfy(msg, "📊 Status Report", 3, "chart_with_upwards_trend"); err != nil {
 			errs = append(errs, err)
 		}
 	}

@@ -27,11 +27,12 @@ func Run(l *logger.Logger) {
 	fmt.Println("Select your platform:")
 	fmt.Println("1. Discord / Slack")
 	fmt.Println("2. Telegram")
-	fmt.Print("Enter choice (1/2): ")
+	fmt.Println("3. Ntfy.sh (Zero Setup)")
+	fmt.Print("Enter choice (1/2/3): ")
 	choice, _ := reader.ReadString('\n')
 	choice = strings.TrimSpace(choice)
 
-	var webhookURL, telegramToken, telegramChatID string
+	var webhookURL, telegramToken, telegramChatID, ntfyTopic string
 
 	if choice == "1" {
 		// Discord/Slack Flow
@@ -71,6 +72,15 @@ func Run(l *logger.Logger) {
 			telegramChatID = chatID
 			l.Success("WIZARD", fmt.Sprintf("✅ Detected Chat ID: %s", telegramChatID))
 		}
+	} else if choice == "3" {
+		// Ntfy Flow
+		fmt.Println("\n--- Ntfy.sh Setup ---")
+		fmt.Println("1. Download Ntfy app (Android/iOS) or use web.")
+		fmt.Println("2. Pick a UNIQUE topic name (e.g. 'oci-my-secret-topic-99').")
+		fmt.Println("3. Subscribe to it in the app.")
+		fmt.Print("👉 Enter Topic Name: ")
+		ntfyTopic, _ = reader.ReadString('\n')
+		ntfyTopic = strings.TrimSpace(ntfyTopic)
 	} else {
 		l.Error("WIZARD", "Invalid choice.")
 		return
@@ -83,6 +93,7 @@ func Run(l *logger.Logger) {
 		WebhookURL:     webhookURL,
 		TelegramToken:  telegramToken,
 		TelegramChatID: telegramChatID,
+		NtfyTopic:      ntfyTopic,
 	}
 	n := notifier.New(testCfg)
 
@@ -99,7 +110,7 @@ func Run(l *logger.Logger) {
 	}
 
 	// 3. Save to Config
-	if err := saveConfig(webhookURL, telegramToken, telegramChatID); err != nil {
+	if err := saveConfig(webhookURL, telegramToken, telegramChatID, ntfyTopic); err != nil {
 		l.Error("WIZARD", fmt.Sprintf("Failed to save config: %v", err))
 	} else {
 		l.Success("WIZARD", "✅ Config updated successfully!")
@@ -139,7 +150,7 @@ func pollTelegramChatID(token string) (string, error) {
 }
 
 // saveConfig updates valid fields in config.yaml
-func saveConfig(webhook, tgToken, tgChatID string) error {
+func saveConfig(webhook, tgToken, tgChatID, ntfyTopic string) error {
 	path := "config.yaml"
 	content, err := os.ReadFile(path)
 	if err != nil {
@@ -158,6 +169,9 @@ func saveConfig(webhook, tgToken, tgChatID string) error {
 	}
 	if tgChatID != "" {
 		replacements["telegram_chat_id"] = tgChatID
+	}
+	if ntfyTopic != "" {
+		replacements["ntfy_topic"] = ntfyTopic
 	}
 
 	// Allow adding missing keys if logic permits, but regex replacement is safer for existing files.

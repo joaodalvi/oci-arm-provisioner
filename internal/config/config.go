@@ -76,6 +76,7 @@ type NotificationConfig struct {
 	WebhookURL     string `yaml:"webhook_url"`      // Generic Webhook (Discord/Slack compatible)
 	TelegramToken  string `yaml:"telegram_token"`   // Telegram Bot Token
 	TelegramChatID string `yaml:"telegram_chat_id"` // Telegram Chat/Channel ID
+	NtfyTopic      string `yaml:"ntfy_topic"`       // Ntfy.sh Topic Name (e.g. "my_secret_topic")
 	InsistentPing  bool   `yaml:"insistent_ping"`   // If true, adds @everyone or similar to success Msg.
 	DigestInterval string `yaml:"digest_interval"`  // e.g., "24h", "1h". Empty = disabled.
 }
