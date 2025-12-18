@@ -159,4 +159,4 @@ systemctl --user enable --now oci-arm-provisioner
 *   **Logs**: Console logs are minimal and colored. File logs in `logs/` are timestamped and suitable for auditing.
 
 ## 📄 License
-MIT License. See [LICENSE](LICENSE) for details.
+GPLv3 License. See [LICENSE](LICENSE) for details.

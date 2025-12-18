@@ -7,9 +7,11 @@ This document outlines the future development plans for the **OCI ARM Provisione
 The goal is to move beyond simple generic webhooks and support platform-native integrations.
 
 ### 📱 Chat Platforms
-- [ ] **Discord**: Native integration using Webhooks (with rich embeds/colors).
-- [ ] **Slack**: Support for Slack Incoming Webhooks and App integrations.
-- [ ] **Telegram**: Integration with the Telegram Bot API for push notifications.
+### 📱 Chat Platforms
+- [x] **Discord/Slack**: Native integration using Webhooks.
+- [x] **Telegram**: Integration with the Telegram Bot API (Push + Wizard).
+- [x] **Ntfy/Gotify**: Added support for self-hosted push notifications.
+- [x] **Setup Wizard**: Interactive CLI configuration (`--setup`).
 
 ### 📧 Email Integration
 - [ ] **Standard SMTP**: Support for generic email providers (Postfix, SendGrid, etc.).
