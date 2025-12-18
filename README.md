@@ -13,6 +13,7 @@ A high-performance, single-binary application to automate the provisioning of **
 *   **Smart Scheduling**: Configurable delays and cycle intervals to avoid API bans.
 *   **Auto-Discovery**: Automatically finds available Availability Domains (ADs).
 *   **Production Ready**: Includes Docker Compose, Systemd units, and Arch PKGBUILD.
+*   **Roadmap**: See [ROADMAP.md](ROADMAP.md) for future plans (Discord, Telegram, Email).
 
 ## 📂 Project Structure
 *   `cmd/` / `internal/`: Go source code
