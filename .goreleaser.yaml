@@ -13,8 +13,8 @@ builds:
       - CGO_ENABLED=0
     goos:
       - linux
-      # - windows # Optional
-      # - darwin  # Optional
+      - windows
+      - darwin
     goarch:
       - amd64
       - arm64
@@ -23,6 +23,15 @@ builds:
 
 archives:
   - format: tar.gz
+    # this name template makes the OS and Arch compatible with the results of uname.
+    name_template: >-
+      {{ .ProjectName }}_
+      {{- .Version }}_
+      {{- .Os }}_
+      {{- .Arch }}
+    format_overrides:
+      - goos: windows
+        format: zip
     # this name template makes the OS and Arch compatible with the results of uname.
     name_template: >-
       {{ .ProjectName }}_
