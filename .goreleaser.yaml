@@ -1,0 +1,67 @@
+# This is an example .goreleaser.yml file with some sensible defaults.
+# Make sure to check the documentation at https://goreleaser.com
+version: 2
+
+project_name: oci-arm-provisioner
+
+before:
+  hooks:
+    - go mod tidy
+
+builds:
+  - env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+      # - windows # Optional
+      # - darwin  # Optional
+    goarch:
+      - amd64
+      - arm64
+    ldflags:
+      - -s -w
+
+archives:
+  - format: tar.gz
+    # this name template makes the OS and Arch compatible with the results of uname.
+    name_template: >-
+      {{ .ProjectName }}_
+      {{- .Version }}_
+      {{- .Os }}_
+      {{- .Arch }}
+
+checksum:
+  name_template: 'checksums.txt'
+
+snapshot:
+  name_template: "{{ .Tag }}-next"
+
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - '^docs:'
+      - '^test:'
+
+nfpms:
+  - id: packages
+    file_name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+    builds:
+      - oci-arm-provisioner
+    vendor: YourName
+    homepage: https://github.com/yourusername/oci-arm-provisioner
+    maintainer: YourName <you@example.com>
+    description: "Automated OCI ARM Instance Provisioner"
+    license: GPLv3
+    formats:
+      - deb
+      - rpm
+    # Arch Linux packages (pacman) can be added if using newer GoReleaser Pro, 
+    # but standard practice is providing the PKGBUILD we already have.
+    
+    contents:
+      - src: ./deployments/systemd/oci-arm-provisioner.service
+        dst: /usr/lib/systemd/user/oci-arm-provisioner.service
+      - src: ./deployments/systemd/oci-arm-provisioner.timer
+        dst: /usr/lib/systemd/user/oci-arm-provisioner.timer
+

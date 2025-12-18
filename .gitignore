@@ -1,0 +1,29 @@
+# Binaries
+oci-arm-provisioner
+*.exe
+*.dll
+*.so
+*.dylib
+
+# Logs
+logs/
+*.log
+
+# Config (Sensitive)
+config.yaml
+.env
+
+# Keys (Sensitive)
+*.pem
+*.key
+.oci/
+
+# Go
+go.work
+/vendor/
+/bin/
+
+# IDEs
+.vscode/
+.idea/
+*.swp

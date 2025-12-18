@@ -1,0 +1,10 @@
+[Unit]
+Description=Run OCI ARM Provisioner every 15 minutes
+
+[Timer]
+OnCalendar=*:0/15
+Persistent=true
+Unit=oci-arm-provisioner.service
+
+[Install]
+WantedBy=timers.target

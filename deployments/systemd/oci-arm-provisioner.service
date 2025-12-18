@@ -1,0 +1,19 @@
+[Unit]
+Description=OCI ARM VM Provisioner (Daemon)
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=simple
+# Assumes installation to /usr/bin/oci-arm-provisioner
+ExecStart=/usr/bin/oci-arm-provisioner
+
+# Important: Run in user mode, restart on failure
+Restart=always
+RestartSec=60
+
+# Logs will be written to ~/logs/provisioner.log relative to this
+WorkingDirectory=%h
+
+[Install]
+WantedBy=default.target

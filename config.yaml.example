@@ -1,0 +1,50 @@
+# OCI ARM VM Automation Configuration
+
+accounts:
+  my_account_profile_name:
+    enabled: true
+    # --- FULLY AUTOMATED ---
+    user_ocid: "ocid1.user.oc1..aaaaaaaa..."
+    tenancy_ocid: "ocid1.tenancy.oc1..aaaaaaaa..."
+    
+    # Uploaded & Verified
+    fingerprint: "xx:xx:xx..."
+    
+    key_file: "./.oci/oci_api_key.pem"
+    region: "sa-saopaulo-1"
+    
+    compartment_ocid: "ocid1.tenancy.oc1..aaaaaaaa..."
+    
+    # Auto-detects the correct AD prefix
+    availability_domain: "auto"
+    
+    # Retrieved via CLI (or leave empty if you want script to search, but better to provide)
+    subnet_ocid: "ocid1.subnet.oc1..."
+    
+    # Image ID (Check Oracle docs for latest ARM image in your region)
+    image_ocid: "ocid1.image.oc1..."
+    
+    ssh_public_key: "ssh-rsa AAAA..."
+    
+    shape: "VM.Standard.A1.Flex"
+    ocpus: 4
+    memory_gb: 24
+    boot_volume_size_gb: 50
+    display_name: "arm-free-tier-vm"
+    hostname_label: "armvm"
+
+retry:
+  base_interval_minutes: 15
+  max_interval_minutes: 120
+  exponential_backoff: true
+
+scheduler:
+  # Delay between checking different accounts (to avoid IP correlation)
+  account_delay_seconds: 450
+  # Loop forever? (True = Daemon mode, False = Run once for Cron)
+  # If looping, how long to wait between full cycles
+  cycle_interval_seconds: 900
+  
+logging:
+  level: "INFO"
+  log_dir: "logs"
