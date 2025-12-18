@@ -1,6 +1,7 @@
 package config
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
@@ -11,18 +12,27 @@ func TestLoadConfig_Validation(t *testing.T) {
 	tmpDir := t.TempDir()
 	configFile := filepath.Join(tmpDir, "config.yaml")
 
-	mockConfig := `
+	// Create dummy key file for validation
+	keyFile := filepath.Join(tmpDir, "oci.pem")
+	if err := os.WriteFile(keyFile, []byte("dummy-key-content"), 0600); err != nil {
+		t.Fatalf("failed to write dummy key: %v", err)
+	}
+
+	mockConfig := fmt.Sprintf(`
 accounts:
   test_account:
     enabled: true
     user_ocid: "ocid.user.1"
     tenancy_ocid: "ocid.tenancy.1"
     fingerprint: "aa:bb:cc"
-    key_file: "~/keys/oci.pem"
+    key_file: "%s"
     region: "us-ashburn-1"
+    ocpus: 1
+    memory_gb: 1
+    boot_volume_size_gb: 50
 retry:
   base_interval_minutes: 10
-`
+`, keyFile)
 	if err := os.WriteFile(configFile, []byte(mockConfig), 0644); err != nil {
 		t.Fatalf("failed to write mock config: %v", err)
 	}

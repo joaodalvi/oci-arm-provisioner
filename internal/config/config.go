@@ -128,28 +128,45 @@ func LoadConfig(path string) (*Config, string, error) {
 			continue
 		}
 
-		// Validation: Check for required fields to prevent runtime OCI errors
+		// 1. Required String Fields
 		if acc.UserOCID == "" || acc.TenancyOCID == "" || acc.Fingerprint == "" || acc.Region == "" {
-			return nil, loadPath, fmt.Errorf("account '%s' follows invalid configuration: missing required OCID/Fingerprint/Region", name)
+			return nil, loadPath, fmt.Errorf("account '%s': missing required OCID, Fingerprint, or Region", name)
 		}
 
-		// Expand user home directory tilde (~).
+		// 2. Key File Path & Existence
 		if strings.HasPrefix(acc.KeyFile, "~") {
 			usr, _ := user.Current()
 			if usr != nil {
 				acc.KeyFile = filepath.Join(usr.HomeDir, acc.KeyFile[2:])
 			}
 		}
-		// Resolve absolute path for key file.
 		if abs, err := filepath.Abs(acc.KeyFile); err == nil {
 			acc.KeyFile = abs
 		}
+		if _, err := os.Stat(acc.KeyFile); os.IsNotExist(err) {
+			return nil, loadPath, fmt.Errorf("account '%s': key file not found at %s", name, acc.KeyFile)
+		}
+
+		// 3. Resource Constraints (Sanity Checks)
+		if acc.OCPUs <= 0 {
+			return nil, loadPath, fmt.Errorf("account '%s': ocpus must be positive (got %f)", name, acc.OCPUs)
+		}
+		if acc.MemoryGB <= 0 {
+			return nil, loadPath, fmt.Errorf("account '%s': memory_gb must be positive (got %f)", name, acc.MemoryGB)
+		}
+		if acc.BootVolumeSizeGB < 50 {
+			// OCI often requires 50GB min for many images, alerting the user is helpful.
+			return nil, loadPath, fmt.Errorf("account '%s': boot_volume_size_gb must be at least 50 (got %d)", name, acc.BootVolumeSizeGB)
+		}
 	}
 
-	// Security/Stability: Enforce minimum cycle interval to prevent CPU spinning or API bans.
+	// Security/Stability
 	const MinCycleInterval = 10
 	if cfg.Scheduler.CycleIntervalSeconds < MinCycleInterval {
 		cfg.Scheduler.CycleIntervalSeconds = MinCycleInterval
+	}
+	if cfg.Scheduler.AccountDelaySeconds < 0 {
+		cfg.Scheduler.AccountDelaySeconds = 0
 	}
 
 	return &cfg, loadPath, nil
