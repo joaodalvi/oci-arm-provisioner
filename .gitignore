@@ -27,3 +27,4 @@ go.work
 .vscode/
 .idea/
 *.swp
+PUBLIC_KEYS_TO_UPLOAD.txt
