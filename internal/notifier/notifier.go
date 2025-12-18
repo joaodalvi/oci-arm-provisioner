@@ -22,24 +22,22 @@ func New(cfg config.NotificationConfig) *Notifier {
 	}
 }
 
-// Discord Payload Structure
+// --- Payload Structures ---
+
+// Discord
 type discordPayload struct {
 	Content string         `json:"content,omitempty"`
 	Embeds  []discordEmbed `json:"embeds,omitempty"`
 }
-
 type discordEmbed struct {
-	Title       string  `json:"title"`
-	Description string  `json:"description,omitempty"`
-	Color       int     `json:"color"` // Decimal color code
-	Footer      *footer `json:"footer,omitempty"`
-	Fields      []field `json:"fields,omitempty"`
+	Title  string  `json:"title"`
+	Color  int     `json:"color"`
+	Footer *footer `json:"footer,omitempty"`
+	Fields []field `json:"fields,omitempty"`
 }
-
 type footer struct {
 	Text string `json:"text"`
 }
-
 type field struct {
 	Name   string `json:"name"`
 	Value  string `json:"value"`
@@ -47,40 +45,62 @@ type field struct {
 }
 
 const (
-	ColorSuccess = 5763719  // Green
-	ColorError   = 15548997 // Red
-	ColorInfo    = 3447003  // Blue
+	ColorSuccess = 5763719
+	ColorError   = 15548997
+	ColorInfo    = 3447003
 )
 
-// Telegram Payload
+// Telegram
 type telegramPayload struct {
 	ChatID    string `json:"chat_id"`
 	Text      string `json:"text"`
 	ParseMode string `json:"parse_mode"`
 }
 
+// Gotify
+type gotifyPayload struct {
+	Title    string                 `json:"title"`
+	Message  string                 `json:"message"`
+	Priority int                    `json:"priority"`
+	Extras   map[string]interface{} `json:"extras,omitempty"`
+}
+
+// --- Helper Methods ---
+
+func (n *Notifier) postJSON(url string, payload interface{}, headers map[string]string) error {
+	data, err := json.Marshal(payload)
+	if err != nil {
+		return fmt.Errorf("marshal failed: %w", err)
+	}
+
+	req, err := http.NewRequest("POST", url, bytes.NewBuffer(data))
+	if err != nil {
+		return fmt.Errorf("req creation failed: %w", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+	for k, v := range headers {
+		req.Header.Set(k, v)
+	}
+
+	resp, err := n.Client.Do(req)
+	if err != nil {
+		return fmt.Errorf("request failed: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode >= 400 {
+		return fmt.Errorf("api returned status: %d", resp.StatusCode)
+	}
+	return nil
+}
+
+// --- Senders ---
+
 func (n *Notifier) sendWebhook(payload discordPayload) error {
 	if n.Config.WebhookURL == "" {
 		return nil
 	}
-	data, err := json.Marshal(payload)
-	if err != nil {
-		return err
-	}
-	req, err := http.NewRequest("POST", n.Config.WebhookURL, bytes.NewBuffer(data))
-	if err != nil {
-		return err
-	}
-	req.Header.Set("Content-Type", "application/json")
-	resp, err := n.Client.Do(req)
-	if err != nil {
-		return err
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode >= 400 {
-		return fmt.Errorf("webhook failed: %d", resp.StatusCode)
-	}
-	return nil
+	return n.postJSON(n.Config.WebhookURL, payload, nil)
 }
 
 func (n *Notifier) sendTelegram(text string) error {
@@ -93,24 +113,7 @@ func (n *Notifier) sendTelegram(text string) error {
 		Text:      text,
 		ParseMode: "HTML",
 	}
-	data, err := json.Marshal(payload)
-	if err != nil {
-		return err
-	}
-	req, err := http.NewRequest("POST", url, bytes.NewBuffer(data))
-	if err != nil {
-		return err
-	}
-	req.Header.Set("Content-Type", "application/json")
-	resp, err := n.Client.Do(req)
-	if err != nil {
-		return err
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode >= 400 {
-		return fmt.Errorf("telegram failed: %d", resp.StatusCode)
-	}
-	return nil
+	return n.postJSON(url, payload, nil)
 }
 
 func (n *Notifier) sendNtfy(message, title string, priority int, tags string) error {
@@ -118,6 +121,9 @@ func (n *Notifier) sendNtfy(message, title string, priority int, tags string) er
 		return nil
 	}
 	url := fmt.Sprintf("https://ntfy.sh/%s", n.Config.NtfyTopic)
+	// Ntfy usually takes raw body, but json is also supported.
+	// For raw body we can't use postJSON easily without changing signature.
+	// Let's stick to raw body implementation for Ntfy as it's cleaner for simple pushes.
 	req, err := http.NewRequest("POST", url, bytes.NewBufferString(message))
 	if err != nil {
 		return err
@@ -137,6 +143,29 @@ func (n *Notifier) sendNtfy(message, title string, priority int, tags string) er
 	}
 	return nil
 }
+
+func (n *Notifier) sendGotify(message, title string, priority int) error {
+	if n.Config.GotifyURL == "" || n.Config.GotifyToken == "" {
+		return nil
+	}
+	// Sanitize URL (ensure no trailing slash logic or just rely on user)
+	// Assuming well formed URL for now.
+	url := fmt.Sprintf("%s/message?token=%s", n.Config.GotifyURL, n.Config.GotifyToken)
+
+	payload := gotifyPayload{
+		Title:    title,
+		Message:  message,
+		Priority: priority,
+		Extras: map[string]interface{}{
+			"client::display": map[string]string{
+				"contentType": "text/markdown",
+			},
+		},
+	}
+	return n.postJSON(url, payload, nil)
+}
+
+// --- Public API ---
 
 func (n *Notifier) SendSuccess(account, instanceID, region string) error {
 	var errs []error
@@ -175,12 +204,24 @@ func (n *Notifier) SendSuccess(account, instanceID, region string) error {
 
 	// 3. Ntfy
 	if n.Config.NtfyTopic != "" {
-		msg := fmt.Sprintf("**Instance Launched!**\n\n**Account:** %s\n**Region:** %s\n**ID:** `%s`", account, region, instanceID)
-		priority := 4 // High
+		priority := 4
 		if n.Config.InsistentPing {
-			priority = 5 // Max/Urgent
+			priority = 5
 		}
+		msg := fmt.Sprintf("**Instance Launched!**\n\n**Account:** %s\n**Region:** %s\n**ID:** `%s`", account, region, instanceID)
 		if err := n.sendNtfy(msg, "🚀 OCI Provision Success", priority, "tada,rocket"); err != nil {
+			errs = append(errs, err)
+		}
+	}
+
+	// 4. Gotify
+	if n.Config.GotifyURL != "" {
+		priority := 8
+		if n.Config.InsistentPing {
+			priority = 10
+		}
+		msg := fmt.Sprintf("**Instance Launched!**\n\n**Account:** %s\n**Region:** %s\n**ID:** `%s`", account, region, instanceID)
+		if err := n.sendGotify(msg, "🚀 OCI Provision Success", priority); err != nil {
 			errs = append(errs, err)
 		}
 	}
@@ -236,6 +277,15 @@ func (n *Notifier) SendDigest(stats Stats) error {
 		msg := fmt.Sprintf("**Daily Digest**\n\n🕒 **Uptime:** %s\n🔄 **Cycles:** %d\n⚠️ **Capacity Hits:** %d\n❌ **Errors:** %d",
 			uptime.String(), stats.TotalCycles, stats.CapacityErrors, stats.OtherErrors)
 		if err := n.sendNtfy(msg, "📊 Status Report", 3, "chart_with_upwards_trend"); err != nil {
+			errs = append(errs, err)
+		}
+	}
+
+	// Gotify
+	if n.Config.GotifyURL != "" {
+		msg := fmt.Sprintf("**Daily Digest**\n\n🕒 **Uptime:** %s\n🔄 **Cycles:** %d\n⚠️ **Capacity Hits:** %d\n❌ **Errors:** %d",
+			uptime.String(), stats.TotalCycles, stats.CapacityErrors, stats.OtherErrors)
+		if err := n.sendGotify(msg, "📊 Status Report", 4); err != nil {
 			errs = append(errs, err)
 		}
 	}

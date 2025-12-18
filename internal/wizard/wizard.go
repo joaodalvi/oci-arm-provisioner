@@ -32,7 +32,7 @@ func Run(l *logger.Logger) {
 	choice, _ := reader.ReadString('\n')
 	choice = strings.TrimSpace(choice)
 
-	var webhookURL, telegramToken, telegramChatID, ntfyTopic string
+	var webhookURL, telegramToken, telegramChatID, ntfyTopic, gotifyURL, gotifyToken string
 
 	if choice == "1" {
 		// Discord/Slack Flow
@@ -81,6 +81,24 @@ func Run(l *logger.Logger) {
 		fmt.Print("👉 Enter Topic Name: ")
 		ntfyTopic, _ = reader.ReadString('\n')
 		ntfyTopic = strings.TrimSpace(ntfyTopic)
+	} else if choice == "4" {
+		// Gotify Flow
+		fmt.Println("\n--- Gotify Setup ---")
+		fmt.Println("1. Open your Gotify Web UI.")
+		fmt.Println("2. Create a new Application (e.g. 'OCI Bot').")
+		fmt.Println("3. Copy the App Token.")
+		fmt.Print("👉 Enter Gotify Server URL (e.g. https://gotify.example.com): ")
+		gotifyURL, _ = reader.ReadString('\n')
+		gotifyURL = strings.TrimSpace(gotifyURL)
+		// Basic URL sanitization
+		gotifyURL = strings.TrimRight(gotifyURL, "/")
+		if !strings.HasPrefix(gotifyURL, "http") {
+			fmt.Println("⚠️ URL should start with http:// or https://")
+		}
+
+		fmt.Print("👉 Enter App Token: ")
+		gotifyToken, _ = reader.ReadString('\n')
+		gotifyToken = strings.TrimSpace(gotifyToken)
 	} else {
 		l.Error("WIZARD", "Invalid choice.")
 		return
@@ -94,6 +112,8 @@ func Run(l *logger.Logger) {
 		TelegramToken:  telegramToken,
 		TelegramChatID: telegramChatID,
 		NtfyTopic:      ntfyTopic,
+		GotifyURL:      gotifyURL,
+		GotifyToken:    gotifyToken,
 	}
 	n := notifier.New(testCfg)
 
@@ -110,7 +130,7 @@ func Run(l *logger.Logger) {
 	}
 
 	// 3. Save to Config
-	if err := saveConfig(webhookURL, telegramToken, telegramChatID, ntfyTopic); err != nil {
+	if err := saveConfig(webhookURL, telegramToken, telegramChatID, ntfyTopic, gotifyURL, gotifyToken); err != nil {
 		l.Error("WIZARD", fmt.Sprintf("Failed to save config: %v", err))
 	} else {
 		l.Success("WIZARD", "✅ Config updated successfully!")
@@ -150,7 +170,7 @@ func pollTelegramChatID(token string) (string, error) {
 }
 
 // saveConfig updates valid fields in config.yaml
-func saveConfig(webhook, tgToken, tgChatID, ntfyTopic string) error {
+func saveConfig(webhook, tgToken, tgChatID, ntfyTopic, gotifyURL, gotifyToken string) error {
 	path := "config.yaml"
 	content, err := os.ReadFile(path)
 	if err != nil {
@@ -172,6 +192,12 @@ func saveConfig(webhook, tgToken, tgChatID, ntfyTopic string) error {
 	}
 	if ntfyTopic != "" {
 		replacements["ntfy_topic"] = ntfyTopic
+	}
+	if gotifyURL != "" {
+		replacements["gotify_url"] = gotifyURL
+	}
+	if gotifyToken != "" {
+		replacements["gotify_token"] = gotifyToken
 	}
 
 	// Allow adding missing keys if logic permits, but regex replacement is safer for existing files.
