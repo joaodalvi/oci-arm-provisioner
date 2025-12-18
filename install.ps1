@@ -64,6 +64,15 @@ if ($Uninstall) {
         Write-Host "   Kept Config Directory."
     }
 
+
+    # Remove from PATH (User Scope)
+    $CurrentPath = [Environment]::GetEnvironmentVariable("Path", "User")
+    if ($CurrentPath -like "*$InstallDir*") {
+        $NewPath = $CurrentPath.Replace("$InstallDir;", "").Replace(";$InstallDir", "").Replace("$InstallDir", "")
+        [Environment]::SetEnvironmentVariable("Path", $NewPath, "User")
+        Write-Host "   Removed from User PATH."
+    }
+
     Write-Host "✅ Uninstallation Complete!" -ForegroundColor Green
     return
 }
@@ -102,7 +111,17 @@ if (-not (Test-Path "$ConfigDir\config.yaml")) {
     }
 }
 
-# 4. Optional Task Scheduler
+# 4. Add to PATH (User Scope)
+$CurrentPath = [Environment]::GetEnvironmentVariable("Path", "User")
+if ($CurrentPath -notlike "*$InstallDir*") {
+    [Environment]::SetEnvironmentVariable("Path", "$CurrentPath;$InstallDir", "User")
+    Write-Host "🔗 Added $InstallDir to User PATH."
+    Write-Host "   (You may need to restart your terminal)" -ForegroundColor Yellow
+} else {
+    Write-Host "🔗 Already in PATH."
+}
+
+# 5. Optional Task Scheduler
 Write-Host "`n🔧 Do you want to create a background Scheduled Task?"
 Write-Host "   This will run the provisioner automatically at system startup."
 $response = Read-Host "   Create Task? (y/N)"
@@ -119,4 +138,4 @@ if ($response -match "^y") {
 }
 
 Write-Host "`n✅ Installation Complete!" -ForegroundColor Green
-Write-Host "👉 Run from CLI: & '$InstallDir\$BinaryName'"
+Write-Host "👉 Run from CLI: oci-arm-provisioner (Restart terminal if not found)"
