@@ -120,9 +120,17 @@ func RunOCI(l *logger.Logger) {
 		return
 	}
 	l.Success("WIZARD", "✅ config.yaml created successfully!")
-	fmt.Println("\nNext Steps:")
-	fmt.Println("1. Run './oci-arm-provisioner --setup-notifications' to set up alerts.")
-	fmt.Println("2. Run './oci-arm-provisioner' to start!")
+
+	// 7. Chain Notification Wizard
+	fmt.Println("\n--- Notifications ---")
+	fmt.Print("👉 Do you want to configure alerts (Discord/Telegram/etc) now? (y/N): ")
+	wantNotes, _ := reader.ReadString('\n')
+	if strings.ToLower(strings.TrimSpace(wantNotes)) == "y" {
+		RunNotifications(l)
+	} else {
+		fmt.Println("\nConfiguration complete! You can set up alerts later with '--setup-notifications'.")
+		fmt.Println("Run './oci-arm-provisioner' to start!")
+	}
 }
 
 const configTemplate = `accounts:
