@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"flag"
 	"fmt"
 	"os"
 	"os/signal"
@@ -14,9 +15,14 @@ import (
 	"github.com/yourusername/oci-arm-provisioner/internal/logger"
 	"github.com/yourusername/oci-arm-provisioner/internal/notifier"
 	"github.com/yourusername/oci-arm-provisioner/internal/provisioner"
+	"github.com/yourusername/oci-arm-provisioner/internal/wizard"
 )
 
 func main() {
+	// 0. Parse Flags
+	setupNotifications := flag.Bool("setup-notifications", false, "Run the notification setup wizard")
+	flag.Parse()
+
 	// 1. Setup Context with Cancellation
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer cancel()
@@ -25,6 +31,12 @@ func main() {
 	l, err := logger.New("logs")
 	if err != nil {
 		panic(fmt.Sprintf("Failed to initialize logger: %v", err))
+	}
+
+	// Wizard Mode
+	if *setupNotifications {
+		wizard.Run(l)
+		return
 	}
 
 	l.Section("🚀 OCI ARM Provisioner")
