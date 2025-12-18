@@ -1,9 +1,9 @@
 # OCI ARM Provisioner (Go Edition) 🚀
 
 ![License: GPLv3](https://img.shields.io/badge/License-GPLv3-blue.svg)
-![Go Version](https://img.shields.io/badge/Go-1.21+-blue.svg)
-![Build Status](https://github.com/yourusername/oci-arm-provisioner/actions/workflows/release.yml/badge.svg)
-![Docker](https://github.com/yourusername/oci-arm-provisioner/actions/workflows/docker.yml/badge.svg)
+![Go Version](https://img.shields.io/badge/Go-1.23+-blue.svg)
+![Build Status](https://github.com/joaodalvi/oci-arm-provisioner/actions/workflows/release.yml/badge.svg)
+![Docker](https://github.com/joaodalvi/oci-arm-provisioner/actions/workflows/docker.yml/badge.svg)
 
 A high-performance, single-binary application to automate the provisioning of **Always Free ARM Instances** (4 OCPUs, 24GB RAM) on Oracle Cloud Infrastructure (OCI).
 
@@ -58,7 +58,7 @@ docker run -d \
   -v $(pwd)/config.yaml:/app/config.yaml \
   -v $(HOME)/.oci:/root/.oci:ro \
   -v $(pwd)/logs:/app/logs \
-  ghcr.io/yourusername/oci-arm-provisioner:latest
+  ghcr.io/joaodalvi/oci-arm-provisioner:latest
 ```
 
 **Viewing Logs:**
@@ -99,7 +99,7 @@ scheduler:
 **Requirements**: Go 1.21+
 
 ```bash
-git clone https://github.com/yourusername/oci-arm-provisioner.git
+git clone https://github.com/joaodalvi/oci-arm-provisioner.git
 cd oci-arm-provisioner
 go mod tidy
 go build -ldflags="-s -w" -o oci-arm-provisioner
