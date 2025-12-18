@@ -102,3 +102,34 @@ notifications:
 
 **Telegram Chat ID not found?**
 *   You **must** send a message (like `/start`) to your bot first. Bots cannot initiate conversations with users who haven't spoken to them.
+
+---
+
+## 🐳 Docker Users
+If you are running the application via Docker, you cannot use the interactive wizard easily.
+**Option 1: Edit Config File**
+Edit the `config.yaml` file on your host machine (which is mounted into the container).
+```bash
+nano config.yaml
+# Add "webhook_url: ..." manually
+```
+**Option 2: Environment Variables (Recommended)**
+You can inject secrets via environment variables instead of writing them to the file.
+```bash
+docker run -d \
+  -e OCI_NOTIFY_WEBHOOK="https://discord..." \
+  -v $(pwd)/config.yaml:/app/config.yaml \
+  ...
+```
+
+## 🔧 Environment Variables
+The following environment variables will **override** settings in `config.yaml`. This is useful for keeping secrets out of your config file.
+
+| Variable | Config Override |
+| :--- | :--- |
+| `OCI_NOTIFY_WEBHOOK` | `notifications.webhook_url` |
+| `OCI_NOTIFY_TELEGRAM_TOKEN` | `notifications.telegram_token` |
+| `OCI_NOTIFY_TELEGRAM_CHAT` | `notifications.telegram_chat_id` |
+| `OCI_NOTIFY_NTFY_TOPIC` | `notifications.ntfy_topic` |
+| `OCI_NOTIFY_GOTIFY_URL` | `notifications.gotify_url` |
+| `OCI_NOTIFY_GOTIFY_TOKEN` | `notifications.gotify_token` |

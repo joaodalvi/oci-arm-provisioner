@@ -174,6 +174,27 @@ func LoadConfig(path string) (*Config, string, error) {
 		cfg.Scheduler.AccountDelaySeconds = 0
 	}
 
+	// Environment Variable Overrides (Useful for Docker/Kubernetes)
+	// This allows setting secrets without writing them to the file.
+	if v := os.Getenv("OCI_NOTIFY_WEBHOOK"); v != "" {
+		cfg.Notifications.WebhookURL = v
+	}
+	if v := os.Getenv("OCI_NOTIFY_TELEGRAM_TOKEN"); v != "" {
+		cfg.Notifications.TelegramToken = v
+	}
+	if v := os.Getenv("OCI_NOTIFY_TELEGRAM_CHAT"); v != "" {
+		cfg.Notifications.TelegramChatID = v
+	}
+	if v := os.Getenv("OCI_NOTIFY_NTFY_TOPIC"); v != "" {
+		cfg.Notifications.NtfyTopic = v
+	}
+	if v := os.Getenv("OCI_NOTIFY_GOTIFY_URL"); v != "" {
+		cfg.Notifications.GotifyURL = v
+	}
+	if v := os.Getenv("OCI_NOTIFY_GOTIFY_TOKEN"); v != "" {
+		cfg.Notifications.GotifyToken = v
+	}
+
 	return &cfg, loadPath, nil
 }
 
