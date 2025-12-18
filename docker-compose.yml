@@ -18,7 +18,15 @@ services:
       # In Docker, user is root (default). Home is /root.
       # So ~/.oci resolves to /root/.oci
       # This mount works perfectly.
-      - OCI_CLI_CONFIG_FILE=/root/.oci/config
+      # - OCI_CLI_CONFIG_FILE=/root/.oci/config
+
+      # Optional: Override Notifications via Env
+      # - OCI_NOTIFY_WEBHOOK=https://discord.com/api/webhooks/...
+      # - OCI_NOTIFY_TELEGRAM_TOKEN=123:ABC...
+      # - OCI_NOTIFY_TELEGRAM_CHAT=987654
+      # - OCI_NOTIFY_NTFY_TOPIC=my-secret-topic
+      # - OCI_NOTIFY_GOTIFY_URL=https://gotify.example.com
+      # - OCI_NOTIFY_GOTIFY_TOKEN=A1b2...
 
     # Best Practice: Limit log size to prevent filling disk
     logging:
