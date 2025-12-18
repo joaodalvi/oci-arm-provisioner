@@ -48,3 +48,27 @@ scheduler:
 logging:
   level: "INFO"
   log_dir: "logs"
+
+notifications:
+  enabled: true
+  
+  # --- Provider Options (Set ONE or MORE) ---
+  
+  # 1. Discord / Slack (Webhook)
+  webhook_url: "" 
+  
+  # 2. Telegram (Bot)
+  # Run ./oci-arm-provisioner --setup-notifications to find Chat ID easily
+  telegram_token: ""
+  telegram_chat_id: ""
+  
+  # 3. Ntfy.sh (No account needed)
+  ntfy_topic: "" # e.g. "my-secret-topic-99"
+  
+  # 4. Gotify (Self-hosted)
+  gotify_url: ""
+  gotify_token: ""
+
+  # --- Settings ---
+  insistent_ping: false   # If true, adds @everyone or High Priority
+  digest_interval: "24h"  # Status report every 24h. Set to "" to disable.

@@ -12,8 +12,27 @@ A high-performance, single-binary application to automate the provisioning of **
 *   **Multi-Account Support**: Manage multiple OCI tenancies in parallel.
 *   **Smart Scheduling**: Configurable delays and cycle intervals to avoid API bans.
 *   **Auto-Discovery**: Automatically finds available Availability Domains (ADs).
+*   **🔔 Notifications**: Success alerts & daily digests via Discord, Telegram, Ntfy, or Gotify.
 *   **Production Ready**: Includes Docker Compose, Systemd units, and Arch PKGBUILD.
-*   **Roadmap**: See [ROADMAP.md](ROADMAP.md) for future plans (Discord, Telegram, Email).
+*   **Roadmap**: See [ROADMAP.md](ROADMAP.md) for future plans.
+
+## 🔔 Notifications
+Get notified instantly when your instance is created!
+*   **Success Alerts** (with optional `@everyone` ping)
+*   **Daily Digests** (Uptime, cycle counts, health check)
+
+**Supported Platforms:**
+*   **Discord / Slack** (Webhook)
+*   **Telegram** (Bot) - *Includes auto-discovery of Chat ID!*
+*   **Ntfy.sh** (Push) - *Zero setup required*
+*   **Gotify** (Self-hosted)
+
+**Setup Wizard:**
+Run the app with the setup flag to interactively configure your alerts:
+```bash
+./oci-arm-provisioner --setup-notifications
+```
+👉 Full Guide: [docs/NOTIFICATIONS.md](docs/NOTIFICATIONS.md)
 
 ## 📂 Project Structure
 *   `cmd/` / `internal/`: Go source code
