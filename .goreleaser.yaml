@@ -64,4 +64,7 @@ nfpms:
         dst: /usr/lib/systemd/user/oci-arm-provisioner.service
       - src: ./deployments/systemd/oci-arm-provisioner.timer
         dst: /usr/lib/systemd/user/oci-arm-provisioner.timer
+      - src: ./config.yaml.example
+        dst: /etc/oci-arm-provisioner/config.yaml.example
+        type: config
 
