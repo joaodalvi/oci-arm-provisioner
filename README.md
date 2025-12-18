@@ -1,123 +1,142 @@
-# OCI ARM Provisioner (Go Edition) 🚀
+<div align="center">
 
-![License: GPLv3](https://img.shields.io/badge/License-GPLv3-blue.svg)
-![Go Version](https://img.shields.io/badge/Go-1.23+-blue.svg)
-![Build Status](https://github.com/joaodalvi/oci-arm-provisioner/actions/workflows/release.yml/badge.svg)
-![Docker](https://github.com/joaodalvi/oci-arm-provisioner/actions/workflows/docker.yml/badge.svg)
-
-A high-performance, single-binary application to automate the provisioning of **Always Free ARM Instances** (4 OCPUs, 24GB RAM) on Oracle Cloud Infrastructure (OCI).
-
-## ✨ Features
-*   **written in Go**: Fast (native binary), lightweight (<10MB), and memory safe.
-*   **Multi-Account Support**: Manage multiple OCI tenancies in parallel.
-*   **Smart Scheduling**: Configurable delays and cycle intervals to avoid API bans.
-*   **Auto-Discovery**: Automatically finds available Availability Domains (ADs).
-*   **🔔 Notifications**: Success alerts & daily digests via Discord, Telegram, Ntfy, or Gotify.
-*   **Production Ready**: Includes Docker Compose, Systemd units, and Arch PKGBUILD.
-*   **Roadmap**: See [ROADMAP.md](ROADMAP.md) for future plans.
-
-## 🔔 Notifications
-Get notified instantly when your instance is created!
-*   **Success Alerts** (with optional `@everyone` ping)
-*   **Daily Digests** (Uptime, cycle counts, health check)
-
-**Supported Platforms:**
-*   **Discord / Slack** (Webhook)
-*   **Telegram** (Bot) - *Includes auto-discovery of Chat ID!*
-*   **Ntfy.sh** (Push) - *Zero setup required*
-*   **Gotify** (Self-hosted)
-
-**Setup Wizard:**
-Run the app with the setup flag to interactively configure your alerts:
-```bash
-./oci-arm-provisioner --setup-notifications
+```text
+   ____  __________    ___    ____  __  ___   ____  ____  ________  __________
+  / __ \/ ____/  _/   /   |  / __ \/  |/  /  / __ \/ __ \/ ___/ _ \/ ___/ ___/
+ / / / / /    / /    / /| | / /_/ / /|_/ /  / /_/ / /_/ / __/ /_/ / /   \__ \ 
+/ /_/ / /____/ /    / ___ |/ _, _/ /  / /  / ____/ _, _/ /_/\__, /___/ ___/ / 
+\____/\____/___/   /_/  |_/_/ |_/_/  /_/  /_/   /_/ |_|\__/____//___//____/  
+                                                       
+🚀 OCI Always Free ARM Instance Automator
 ```
-👉 Full Guide: [docs/NOTIFICATIONS.md](docs/NOTIFICATIONS.md)
 
-## 📂 Project Structure
-*   `cmd/` / `internal/`: Go source code
-*   `deployments/`: Packaging for Arch Linux & Systemd
-*   `configs/`: Example configurations
-*   `Makefile`: Unified management commands
+[![License: GPLv3](https://img.shields.io/badge/License-GPLv3-blue.svg)](LICENSE)
+[![Go Report Card](https://goreportcard.com/badge/github.com/joaodalvi/oci-arm-provisioner)](https://goreportcard.com/report/github.com/joaodalvi/oci-arm-provisioner)
+[![Build Status](https://github.com/joaodalvi/oci-arm-provisioner/actions/workflows/release.yml/badge.svg)](https://github.com/joaodalvi/oci-arm-provisioner/actions)
+[![Docker](https://img.shields.io/badge/Docker-Ready-blue?logo=docker&logoColor=white)](https://github.com/joaodalvi/oci-arm-provisioner/pkgs/container/oci-arm-provisioner)
 
-## 🚀 Quick Start
+**Eliminate "Out of Host Capacity" Errors Forever.**
 
-### Option 1: Manual Run (Easiest)
-1.  **Download** the latest release (or build it).
-2.  **Configure**:
-    Run the interactive wizard to set up your `.oci/` keys and `config.yaml`:
+[Features](#-features) • [Installation](#-installation) • [Configuration](#%EF%B8%8F-configuration) • [Compliance](#-compliance--safety)
+
+</div>
+
+---
+
+## 🧐 The Problem
+You want the **Oracle Cloud Always Free ARM Instance** (4 OCPUs, 24GB RAM) because it's the best free cloud deal in existence.
+
+But every time you try to create one, you see:
+> **"Out of host capacity."**
+
+You are tired of manually refreshing the page at 3 AM hoping for a slot.
+
+## 💡 The Solution
+**OCI ARM Provisioner** is a set-and-forget automation tool written in Go. It:
+1.  **Watches** for availability in your region (24/7).
+2.  **Snipes** the instance the second it becomes available.
+3.  **Notifies** you via Discord/Telegram/App so you can celebrate.
+
+It is lightweight (<10MB), safe (respects API limits), and runs on anything (Raspberry Pi, VPS, Docker, Windows).
+
+---
+
+## 🚨 Compliance & Safety
+> [!IMPORTANT]
+> **READ THIS BEFORE USING**
+
+Oracle has strict Terms of Service regarding the Free Tier.
+1.  **One Account Per Person**: Do **NOT** use this tool to manage multiple accounts for yourself. Oracle **will ban you** for multi-accounting.
+2.  **Authorized Use Only**: The multi-account feature is designed for managing **authorized tenancies** (e.g., your legitimate personal account + a client/friend's account who gave you keys).
+3.  **Rate Limits**: This tool uses a scheduler (default 900s) to essentially "poll" the API. Aggressive polling (e.g., every 1 second) **will get your API keys revoked**. Stick to the defaults.
+
+**Disclaimer**: The author provides this tool for educational and legitimate automation purposes. Use it responsibly.
+
+---
+
+## � Installation
+
+| Platform | Method | Instructions |
+| :--- | :--- | :--- |
+| **🐳 Docker** | **Compose** | `docker-compose up -d` (Recommended) |
+| **🐧 Linux** | **Script** | `curl -L <repo>/install.sh \| bash` (or download release) |
+| **🪟 Windows** | **PowerShell** | Download `.zip`, run `.\install.ps1` |
+| **🍎 macOS** | **Binary** | Download `.tar.gz`, run binary directly |
+| **📦 Arch** | **AUR** | Use provided `PKGBUILD` |
+
+### 🚀 Quick Start (Binary)
+
+1.  **Download** the latest release from [Releases](https://github.com/joaodalvi/oci-arm-provisioner/releases).
+2.  **Setup Environment**:
     ```bash
+    # Linux/Mac
     ./oci-arm-provisioner --setup
+    
+    # Windows
+    .\oci-arm-provisioner.exe --setup
     ```
-    *(Or manually copy `config.yaml.example` if you prefer)*
-3.  **Run**:
+    *Follow the wizard to enter your OCI credentials (OCIDs, Keys).*
+
+3.  **Setup Notifications (Optional)**:
+    ```bash
+    ./oci-arm-provisioner --setup-notifications
+    ```
+    *Support for Discord, Telegram, Ntfy.sh, Gotify.*
+
+4.  **Run**:
     ```bash
     ./oci-arm-provisioner
     ```
 
-### Option 2: Systemd Service (Linux)
-Install as a background service that restarts automatically on boot.
-```bash
-./install.sh
-```
-Check logs: `tail -f logs/provisioner.log`
+---
 
-### Option 3: Docker (Compose or Run)
+## ✨ Features
+*   **🏎️ Blazing Fast**: Native Golang binary. No Python/Node dependencies.
+*   **🤖 Smart Wizard**: Interactive setup guide generates your `config.yaml` for you.
+*   **🔔 Real-Time Alerts**: Get pinged on Discord, Telegram, Slack, Ntfy, or Gotify.
+*   **🛡️ Battle Tested**: Handles 500/502/429 errors with exponential backoff.
+*   **🐳 Container Ready**: Official Docker image and Compose file included.
+*   **🔄 Auto-Discovery**: Automatically scans all Availability Domains (AD-1, AD-2, AD-3) for space.
+*   **🔌 Extensible**: Supports multiple accounts (for legitimate separate tenancies).
 
-**Using Compose (Recommended):**
-```bash
-docker-compose up -d
-docker-compose logs -f    # View live logs
-```
-
-**Using Pre-built Image (Production):**
-If pulling from a registry (e.g., GHCR), run:
-```bash
-docker run -d \
-  --name oci-provisioner \
-  --restart unless-stopped \
-  -v $(pwd)/config.yaml:/app/config.yaml \
-  -v $(HOME)/.oci:/root/.oci:ro \
-  -v $(pwd)/logs:/app/logs \
-  ghcr.io/joaodalvi/oci-arm-provisioner:latest
-```
-
-**Viewing Logs:**
-*   **Docker Logs**: `docker logs -f oci-provisioner` (Shows pretty console output)
-*   **Audit Logs**: `tail -f logs/provisioner.log` (Shows timestamped text file on your host)
+---
 
 ## ⚙️ Configuration
-The application looks for `config.yaml` in the current directory, `~/.config/oci-arm-provisioner/`, or `/etc/oci-arm-provisioner/`.
+The configuration is stored in `config.yaml`.
+**Location:** Current Directory, `~/.config/oci-arm-provisioner/`, or `/etc/oci-arm-provisioner/`.
 
-**Example `config.yaml`**:
+### Example `config.yaml`
 ```yaml
 accounts:
-  my-free-tier:
+  personal-account:
     enabled: true
-    user_ocid: "ocid1.user.oc1..aaaa..."
-    tenancy_ocid: "ocid1.tenancy.oc1..aaaa..."
-    fingerprint: "xx:xx:xx..."
+    # Authentication
+    user_ocid: "ocid1.user.oc1..."
+    tenancy_ocid: "ocid1.tenancy.oc1..."
+    fingerprint: "aa:bb:cc..."
     key_file: "~/.oci/oci_api_key.pem"
-    region: "sa-saopaulo-1"
-    compartment_ocid: "ocid1.compartment.oc1..aaaa..."
-    availability_domain: "auto" # or specific "AD-1"
+    region: "us-ashburn-1"
     
-    # Instance Specs
+    # Instance Specs (Always Free Defaults)
     shape: "VM.Standard.A1.Flex"
     ocpus: 4
     memory_gb: 24
     image_ocid: "ocid1.image.oc1..."
-    ssh_public_key: "ssh-rsa AAAAB3Nza..."
+    ssh_public_key: "ssh-rsa AAA..."
+
+notifications:
+  enabled: true
+  webhook_url: "https://discord.com/api/webhooks/..."
+  # or telegram_token / ntfy_topic / gotify_url
 
 scheduler:
-  account_delay_seconds: 30
-  cycle_interval_seconds: 60
-  loop_forever: true
+  cycle_interval_seconds: 900 # 15 minutes
 ```
 
-## 🛠️ Building from Source
+---
 
-**Requirements**: Go 1.21+
+## 🛠️ Building from Source
+**Requirements**: Go 1.23+
 
 ```bash
 git clone https://github.com/joaodalvi/oci-arm-provisioner.git
@@ -126,48 +145,5 @@ go mod tidy
 go build -ldflags="-s -w" -o oci-arm-provisioner
 ```
 
-## 📦 Arch Linux (PKGBUILD)
-
-A `PKGBUILD` is provided for Arch Linux users.
-
-### 1. Build & Install
-```bash
-makepkg -si
-```
-
-### 2. Configure
-Copy the example config to your user config directory:
-```bash
-mkdir -p ~/.config/oci-arm-provisioner
-cp /etc/oci-arm-provisioner/config.yaml.example ~/.config/oci-arm-provisioner/config.yaml
-# Edit it with your details
-nano ~/.config/oci-arm-provisioner/config.yaml
-```
-
-### 3. Enable Service
-Start it as a **User Service** (no root required):
-```bash
-systemctl --user enable --now oci-arm-provisioner
-```
-
-### 4. View Logs
-*   **System Logs**: `journalctl --user -f -u oci-arm-provisioner`
-*   **File Logs**: `tail -f ~/logs/provisioner.log` (Created in your home dir)
-
-## 🪟 Windows Users
-1.  **Download** the `_windows_amd64.zip` release.
-2.  **Extract** it to a folder.
-3.  **Run** the installation script as Administrator:
-    ```powershell
-    .\install.ps1
-    ```
-4.  It will setup the config and optionally create a Background Task.
-
-
-
-## 🛡️ Security
-*   **Keys**: Store your private keys in `~/.oci/` with `600` permissions. The app will warn you if they are insecure.
-*   **Logs**: Console logs are minimal and colored. File logs in `logs/` are timestamped and suitable for auditing.
-
-## 📄 License
-GPLv3 License. See [LICENSE](LICENSE) for details.
+## � License
+This project is licensed under the **GPLv3 License**. See [LICENSE](LICENSE) for details.
