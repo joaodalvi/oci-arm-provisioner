@@ -74,11 +74,12 @@ func main() {
 
 	// 5. Main Execution Loop
 	// We use a Ticker to trigger the provisioning cycle at fixed intervals.
-	ticker := time.NewTicker(time.Duration(cfg.Scheduler.CycleIntervalSeconds) * time.Second)
+	interval := time.Duration(cfg.Scheduler.CycleIntervalSeconds) * time.Second
+	ticker := time.NewTicker(interval)
 	defer ticker.Stop()
 
 	// Run the first cycle immediately before waiting for the ticker.
-	runCycle(ctx, l, prov)
+	runCycle(ctx, l, prov, interval)
 
 	for {
 		select {
@@ -89,14 +90,14 @@ func main() {
 			return
 		case <-ticker.C:
 			// Trigger a new provisioning cycle.
-			runCycle(ctx, l, prov)
+			runCycle(ctx, l, prov, interval)
 		}
 	}
 }
 
 // runCycle executes a single pass of the provisioning logic.
 // It wraps the provisioner call with logging for cycle duration.
-func runCycle(ctx context.Context, l *logger.Logger, prov *provisioner.Provisioner) {
+func runCycle(ctx context.Context, l *logger.Logger, prov *provisioner.Provisioner, interval time.Duration) {
 	l.Section("Cycle Started")
 	start := time.Now()
 
@@ -105,7 +106,10 @@ func runCycle(ctx context.Context, l *logger.Logger, prov *provisioner.Provision
 	prov.RunCycle(ctx)
 
 	elapsed := time.Since(start)
+	nextRun := time.Now().Add(interval)
+
 	l.Section("Cycle Finished")
 	l.Plain(fmt.Sprintf("Elapsed: %v", elapsed.Round(time.Second)))
-	l.Plain("Sleeping until next cycle...")
+	l.Plain(fmt.Sprintf("Sleeping %v until next cycle (Next run at %s)...",
+		interval, nextRun.Format("15:04:05")))
 }
