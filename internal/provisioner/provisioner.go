@@ -15,6 +15,7 @@ import (
 	"github.com/oracle/oci-go-sdk/v65/identity"
 	"github.com/yourusername/oci-arm-provisioner/internal/config"
 	"github.com/yourusername/oci-arm-provisioner/internal/logger"
+	"github.com/yourusername/oci-arm-provisioner/internal/notifier"
 )
 
 // ComputeClientOps defines the interface for OCI Compute operations, enabling testing/mocking.
@@ -43,18 +44,24 @@ func (p *SimpleConfigProvider) PrivateRSAKey() (*rsa.PrivateKey, error) {
 // Provisioner is the main manager that orchestrates provisioning across multiple accounts.
 // It holds the workers (one per account) and global configuration.
 type Provisioner struct {
-	Config  *config.Config
-	Logger  *logger.Logger
-	Workers []*AccountWorker // List of initialized workers for enabled accounts.
+	Config   *config.Config
+	Logger   *logger.Logger
+	Notifier *notifier.Notifier
+	Tracker  *notifier.Tracker
+	Workers  []*AccountWorker // List of initialized workers for enabled accounts.
 }
 
 // New initializes the Provisioner manager.
 // It iterates through the enabled accounts in the configuration and creates an AccountWorker for each.
-func New(cfg *config.Config, log *logger.Logger) *Provisioner {
+func New(cfg *config.Config, log *logger.Logger, tracker *notifier.Tracker) *Provisioner {
+	n := notifier.New(cfg.Notifications)
+
 	p := &Provisioner{
-		Config:  cfg,
-		Logger:  log,
-		Workers: make([]*AccountWorker, 0),
+		Config:   cfg,
+		Logger:   log,
+		Notifier: n,
+		Tracker:  tracker,
+		Workers:  make([]*AccountWorker, 0),
 	}
 
 	// Initialize workers for all enabled accounts
@@ -64,6 +71,8 @@ func New(cfg *config.Config, log *logger.Logger) *Provisioner {
 				AccountName: name,
 				Config:      accConfig,
 				Logger:      log,
+				Notifier:    n,
+				Tracker:     tracker,
 			}
 			p.Workers = append(p.Workers, worker)
 		}
@@ -75,6 +84,7 @@ func New(cfg *config.Config, log *logger.Logger) *Provisioner {
 // RunCycle executes one provisioning pass for all enabled accounts.
 // It respects the configured delay between accounts to avoid IP correlation/rate-limiting.
 func (p *Provisioner) RunCycle(ctx context.Context) {
+	p.Tracker.IncCycle()
 	for i, worker := range p.Workers {
 		// Check for cancellation before starting work on an account
 		select {
@@ -112,6 +122,8 @@ type AccountWorker struct {
 	AccountName    string
 	Config         *config.AccountConfig
 	Logger         *logger.Logger
+	Notifier       *notifier.Notifier
+	Tracker        *notifier.Tracker
 	ComputeClient  ComputeClientOps
 	IdentityClient IdentityClientOps
 }
@@ -285,19 +297,23 @@ func (w *AccountWorker) Provision(ctx context.Context) (bool, bool, error) {
 			// Handle Capacity/Limit errors gracefully (Retryable)
 			if code == 500 || strings.Contains(msg, "capacity") || strings.Contains(msg, "limit") {
 				w.Logger.Warn(w.AccountName, "Capacity/Limit error. Will retry.")
+				w.Tracker.IncCapacity()
 				return false, true, nil
 			}
 			// Handle Rate Limiting (Retryable)
 			if code == 429 {
 				w.Logger.Warn(w.AccountName, "Rate limited. Will retry.")
+				w.Tracker.IncError()
 				return false, true, nil
 			}
 		}
 		// Non-retryable error
+		w.Tracker.IncError()
 		return false, false, err
 	}
 
 	w.Logger.Success(w.AccountName, fmt.Sprintf("Instance Launched: %s", *resp.Instance.Id))
+	w.Notifier.SendSuccess(w.AccountName, *resp.Instance.Id, w.Config.Region)
 	return true, false, nil
 }
 

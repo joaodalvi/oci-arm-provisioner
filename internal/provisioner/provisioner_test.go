@@ -8,6 +8,7 @@ import (
 	"github.com/oracle/oci-go-sdk/v65/identity"
 	"github.com/yourusername/oci-arm-provisioner/internal/config"
 	"github.com/yourusername/oci-arm-provisioner/internal/logger"
+	"github.com/yourusername/oci-arm-provisioner/internal/notifier"
 )
 
 // --- Mocks ---
@@ -82,6 +83,8 @@ func TestAccountWorker_Provision_InstanceExists(t *testing.T) {
 		AccountName:    "test",
 		Config:         &config.AccountConfig{},
 		Logger:         newMockLogger(),
+		Notifier:       notifier.New(config.NotificationConfig{Enabled: false}),
+		Tracker:        notifier.NewTracker(),
 		ComputeClient:  mock,
 		IdentityClient: mock,
 	}
@@ -117,6 +120,8 @@ func TestAccountWorker_Provision_LaunchSuccess(t *testing.T) {
 		AccountName:    "test",
 		Config:         &config.AccountConfig{AvailabilityDomain: "auto"},
 		Logger:         newMockLogger(),
+		Notifier:       notifier.New(config.NotificationConfig{Enabled: false}),
+		Tracker:        notifier.NewTracker(),
 		ComputeClient:  mock,
 		IdentityClient: mock,
 	}
@@ -147,6 +152,8 @@ func TestAccountWorker_Provision_OutOfCapacity(t *testing.T) {
 		AccountName:    "test",
 		Config:         &config.AccountConfig{AvailabilityDomain: "AD-1"},
 		Logger:         newMockLogger(),
+		Notifier:       notifier.New(config.NotificationConfig{Enabled: false}),
+		Tracker:        notifier.NewTracker(),
 		ComputeClient:  mock,
 		IdentityClient: mock,
 	}
@@ -175,8 +182,10 @@ func TestAccountWorker_Provision_RateLimit(t *testing.T) {
 
 	w := &AccountWorker{
 		AccountName:    "test",
-		Config:         &config.AccountConfig{AvailabilityDomain: "AD-1"},
+		Config:         &config.AccountConfig{},
 		Logger:         newMockLogger(),
+		Notifier:       notifier.New(config.NotificationConfig{Enabled: false}),
+		Tracker:        notifier.NewTracker(),
 		ComputeClient:  mock,
 		IdentityClient: mock,
 	}

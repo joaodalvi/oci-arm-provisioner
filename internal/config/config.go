@@ -70,16 +70,16 @@ type SchedulerConfig struct {
 }
 
 // NotificationConfig holds settings for alerting the user on success/failure.
+// NotificationConfig holds settings for alerting the user on success/failure.
 type NotificationConfig struct {
-	Enabled bool          `yaml:"enabled"`
-	Webhook WebhookConfig `yaml:"webhook"`
+	Enabled        bool   `yaml:"enabled"`
+	WebhookURL     string `yaml:"webhook_url"`     // Generic Webhook (Discord/Slack compatible)
+	InsistentPing  bool   `yaml:"insistent_ping"`  // If true, adds @everyone or similar to success Msg.
+	DigestInterval string `yaml:"digest_interval"` // e.g., "24h", "1h". Empty = disabled.
 }
 
-// WebhookConfig is a generic structure for sending HTTP POST notifications (e.g., Discord, Slack).
-type WebhookConfig struct {
-	Enabled bool   `yaml:"enabled"`
-	URL     string `yaml:"url"`
-}
+// Deprecated: WebhookConfig is merged into top-level for simplicity, or we keep it if we want multiple providers later.
+// For now, flattening it is easier for the user: notifications: { enabled: true, webhook_url: ... }
 
 // LoggingConfig configures the application logs.
 type LoggingConfig struct {

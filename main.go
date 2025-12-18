@@ -12,6 +12,7 @@ import (
 	"github.com/fsnotify/fsnotify"
 	"github.com/yourusername/oci-arm-provisioner/internal/config"
 	"github.com/yourusername/oci-arm-provisioner/internal/logger"
+	"github.com/yourusername/oci-arm-provisioner/internal/notifier"
 	"github.com/yourusername/oci-arm-provisioner/internal/provisioner"
 )
 
@@ -37,8 +38,9 @@ func main() {
 	}
 	l.Plain(fmt.Sprintf("📂 Config: %s", path))
 
-	// 4. Initialize Provisioner
-	prov := provisioner.New(cfg, l)
+	// 4. Initialize Tracker & Provisioner
+	tracker := notifier.NewTracker()
+	prov := provisioner.New(cfg, l, tracker)
 	logAccountSummary(l, cfg)
 
 	// 5. Setup Config Watcher
@@ -109,6 +111,21 @@ func main() {
 	ticker := time.NewTicker(interval)
 	defer ticker.Stop()
 
+	// Digest Ticker
+	digestDuration, _ := time.ParseDuration(cfg.Notifications.DigestInterval)
+	if digestDuration == 0 && cfg.Notifications.DigestInterval != "" {
+		// Default failure or just disabled if empty
+		l.Error("INIT", "Invalid digest interval, disabling digests.")
+	}
+	var digestTicker *time.Ticker
+	if digestDuration > 0 {
+		digestTicker = time.NewTicker(digestDuration)
+		l.Plain(fmt.Sprintf("📊 Digest Scheduler: Enabled (Every %s)", digestDuration))
+	} else {
+		digestTicker = time.NewTicker(24 * 365 * time.Hour) // Dummy long wait
+		digestTicker.Stop()                                 // Stop immediately
+	}
+
 	cycleCount := 1
 
 	// Run first cycle immediately
@@ -128,7 +145,7 @@ func main() {
 
 			// 1. Update Provisioner
 			cfg = newCfg
-			prov = provisioner.New(cfg, l)
+			prov = provisioner.New(cfg, l, tracker)
 			logAccountSummary(l, cfg)
 
 			// 2. Update Ticker if interval changed
@@ -142,6 +159,15 @@ func main() {
 		case <-ticker.C:
 			runCycle(ctx, l, prov, interval, cycleCount)
 			cycleCount++
+
+		case <-digestTicker.C:
+			if cfg.Notifications.Enabled {
+				l.Plain("📊 Sending Digest...")
+				n := notifier.New(cfg.Notifications) // Create temp notifier with current config
+				if err := n.SendDigest(tracker.Snapshot()); err != nil {
+					l.Error("NOTIFIER", fmt.Sprintf("Failed to send digest: %v", err))
+				}
+			}
 		}
 	}
 }
