@@ -157,8 +157,12 @@ systemctl --user enable --now oci-arm-provisioner
 ## 🪟 Windows Users
 1.  **Download** the `_windows_amd64.zip` release.
 2.  **Extract** it to a folder.
-3.  **Run** `oci-arm-provisioner.exe --setup` in PowerShell or Command Prompt.
-4.  **Keep it open**: The app runs in the foreground. To run in background, minimize the window or use Windows Task Scheduler.
+3.  **Run** the installation script as Administrator:
+    ```powershell
+    .\install.ps1
+    ```
+4.  It will setup the config and optionally create a Background Task.
+
 
 
 ## 🛡️ Security
