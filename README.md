@@ -154,6 +154,13 @@ systemctl --user enable --now oci-arm-provisioner
 *   **System Logs**: `journalctl --user -f -u oci-arm-provisioner`
 *   **File Logs**: `tail -f ~/logs/provisioner.log` (Created in your home dir)
 
+## 🪟 Windows Users
+1.  **Download** the `_windows_amd64.zip` release.
+2.  **Extract** it to a folder.
+3.  **Run** `oci-arm-provisioner.exe --setup` in PowerShell or Command Prompt.
+4.  **Keep it open**: The app runs in the foreground. To run in background, minimize the window or use Windows Task Scheduler.
+
+
 ## 🛡️ Security
 *   **Keys**: Store your private keys in `~/.oci/` with `600` permissions. The app will warn you if they are insecure.
 *   **Logs**: Console logs are minimal and colored. File logs in `logs/` are timestamped and suitable for auditing.
