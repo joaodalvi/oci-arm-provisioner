@@ -29,7 +29,7 @@ func main() {
 		panic(fmt.Sprintf("Failed to initialize logger: %v", err))
 	}
 
-	l.Section("Starting OCI ARM Provisioner (Go V2)")
+	l.Section("🚀 OCI ARM Provisioner")
 	l.Plain(fmt.Sprintf("Version: %s", "0.1.0"))
 
 	// 3. Load Configuration
@@ -39,7 +39,7 @@ func main() {
 		l.Error("INIT", fmt.Sprintf("Failed to load config: %v", err))
 		os.Exit(1)
 	}
-	l.Plain(fmt.Sprintf("Loaded Configuration: %s", path))
+	l.Plain(fmt.Sprintf("📂 Config: %s", path))
 
 	// If the config specifies a different log directory, re-initialize the logger.
 	if cfg.Logging.LogDir != "logs" {
@@ -63,11 +63,11 @@ func main() {
 			names = append(names, title)
 		}
 	}
-	l.Plain(fmt.Sprintf("Found %d enabled accounts: %v", count, names))
+	l.Plain(fmt.Sprintf("👥 Accounts: %v", names))
 
 	// If only 1 account, log special mode
 	if count == 1 {
-		l.Plain("Running in Single Account Mode")
+		l.Plain("ℹ️  Single Account Mode Active")
 	}
 
 	if count == 0 {
@@ -115,8 +115,7 @@ func runCycle(ctx context.Context, l *logger.Logger, prov *provisioner.Provision
 	elapsed := time.Since(start)
 	nextRun := time.Now().Add(interval)
 
-	l.Section("Cycle Finished")
-	l.Plain(fmt.Sprintf("Elapsed: %v", elapsed.Round(time.Second)))
-	l.Plain(fmt.Sprintf("Sleeping %v until next cycle (Next run at %s)...",
+	l.Section(fmt.Sprintf("Cycle Finished | Elapsed: %v", elapsed.Round(time.Second)))
+	l.Plain(fmt.Sprintf("💤 Sleeping %v (Next run at %s)...",
 		interval, nextRun.Format("15:04:05")))
 }
