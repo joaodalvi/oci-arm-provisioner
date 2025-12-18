@@ -1,0 +1,82 @@
+# OCI ARM VM Automation Configuration
+
+accounts:
+  dalvi:
+    enabled: false
+    # --- FULLY AUTOMATED ---
+    user_ocid: "ocid1.user.oc1..aaaaaaaaskbgg7gzhamypomafp2krswykkorv5fvbvpbt7ru3h722weecifq"
+    tenancy_ocid: "ocid1.tenancy.oc1..aaaaaaaaq34uz7sa2crbwyizyqjgai6x4bpj2jxslgprvi4cl3qf3d3mkgza"
+    
+    # Uploaded & Verified
+    fingerprint: "36:98:aa:20:5f:68:93:6c:6e:39:74:04:85:ff:f1:97"
+    
+    key_file: "~/.oci/oci_api_key_account1.pem"
+    region: "sa-saopaulo-1"
+    
+    compartment_ocid: "ocid1.tenancy.oc1..aaaaaaaaq34uz7sa2crbwyizyqjgai6x4bpj2jxslgprvi4cl3qf3d3mkgza"
+    
+    # Auto-detects the correct AD prefix
+    availability_domain: "auto"
+    
+    # Retrieved via CLI
+    subnet_ocid: "ocid1.subnet.oc1.sa-saopaulo-1.aaaaaaaavglipu3zkmat4alfzcrtzoyupkiftb5pyqlhqhphvzoaliwitmda"
+    
+    # Updated Image ID (Oracle Linux 8.10)
+    image_ocid: "ocid1.image.oc1.sa-saopaulo-1.aaaaaaaakmqxqb6u3xc46ci2wwxazposy4a4hwdhpnwufldpruxe5bjmml6q"
+    
+    ssh_public_key: "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQCUWa69BcFbQahhbyqHWjTu4E5gWWwr/O24qN2n2oRmUZsYpx2yvgei/ut9rEX+/+JTQYLNIcJzoI6J2XDZHAkcdtXqZaG4sSGXf0axHeo9l6MLfYgOGZ57kZyFGDRJBjMzgameF7/Ihp8Fl/k64c6YYyUCdJLnfxW5ADUFI5q5DU9WXdnPHBtt0UO+Gb/GJfwRThNuFi/pI2whz1T0NYCO0S7TpyH4RLwi1aKyGrrRU6hNrv0cG6dMYza5QYe90OQPsZdU9ZHTeeHgTiM9Ul4rKLvZENLd+RG4w6YLKNdAGLH6TDhhtGnq/VRQdj0sdZq03f4s01JmUkKd6JIhikiegaTOsEdsEVdpw5rxGTlyI9zwWKZphHGZLn56IHZXcIvxUiJoVX4KZ7DxZPkSg1M/mHM1uFucrQOq0M6xUeKoP36W++QD11vlxnLs1MtL6mH2LW+4nB93XFeUtGLaMWWoPgjleRkrnAfnZza80zcJtCbL+roP7ekirxeOU1GWufoDxs2331fcqoIhbkQpjkB025bC/wbliUE6RHo+ItqZJfmo8KSsEJP1YA4sKJWONxDL24F3o09r55x2gDFbDeSx/1T5vVpOAiA4wMI/w27fFCM1HKppO49DiouuRjuUvxPWM2cOvRuar8EU7NgqJKu1jvuP9LDzA6kTgnm5sGoLSw== politruk@politruk-B450M-Steel-Legend"
+    
+    shape: "VM.Standard.A1.Flex"
+    ocpus: 4
+    memory_gb: 24
+    boot_volume_size_gb: 50
+    display_name: "arm-free-tier-vm"
+    hostname_label: "armvm"
+    
+  joaodalvi:
+    enabled: true
+    # --- FULLY AUTOMATED ---
+    user_ocid: "ocid1.user.oc1..aaaaaaaadpegezvenopzgxavf4wd4ty3nza4qm5gk3ersydusf3srycohsda"
+    tenancy_ocid: "ocid1.tenancy.oc1..aaaaaaaaxhqy5o7fgszbxdj6iymhyrjm6eylo53rjrlkrdaynqy6h3vta3da"
+    
+    # Uploaded & Verified
+    fingerprint: "7e:4d:de:37:a5:ae:e0:f8:46:ee:89:00:e9:16:7f:c2"
+    
+    key_file: "~/.oci/oci_api_key_account2.pem"
+    region: "sa-saopaulo-1"
+    
+    compartment_ocid: "ocid1.tenancy.oc1..aaaaaaaaxhqy5o7fgszbxdj6iymhyrjm6eylo53rjrlkrdaynqy6h3vta3da"
+    
+    # Auto-detects the correct AD prefix
+    availability_domain: "auto"
+    
+    # Retrieved via CLI
+    subnet_ocid: "ocid1.subnet.oc1.sa-saopaulo-1.aaaaaaaabuaiodadb6vijsjfiauxlgtdgpdjl6mnob5vsymlifoqwbigo5eq"
+    
+    # Updated Image ID
+    image_ocid: "ocid1.image.oc1.sa-saopaulo-1.aaaaaaaakmqxqb6u3xc46ci2wwxazposy4a4hwdhpnwufldpruxe5bjmml6q"
+    ssh_public_key: "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQCUWa69BcFbQahhbyqHWjTu4E5gWWwr/O24qN2n2oRmUZsYpx2yvgei/ut9rEX+/+JTQYLNIcJzoI6J2XDZHAkcdtXqZaG4sSGXf0axHeo9l6MLfYgOGZ57kZyFGDRJBjMzgameF7/Ihp8Fl/k64c6YYyUCdJLnfxW5ADUFI5q5DU9WXdnPHBtt0UO+Gb/GJfwRThNuFi/pI2whz1T0NYCO0S7TpyH4RLwi1aKyGrrRU6hNrv0cG6dMYza5QYe90OQPsZdU9ZHTeeHgTiM9Ul4rKLvZENLd+RG4w6YLKNdAGLH6TDhhtGnq/VRQdj0sdZq03f4s01JmUkKd6JIhikiegaTOsEdsEVdpw5rxGTlyI9zwWKZphHGZLn56IHZXcIvxUiJoVX4KZ7DxZPkSg1M/mHM1uFucrQOq0M6xUeKoP36W++QD11vlxnLs1MtL6mH2LW+4nB93XFeUtGLaMWWoPgjleRkrnAfnZza80zcJtCbL+roP7ekirxeOU1GWufoDxs2331fcqoIhbkQpjkB025bC/wbliUE6RHo+ItqZJfmo8KSsEJP1YA4sKJWONxDL24F3o09r55x2gDFbDeSx/1T5vVpOAiA4wMI/w27fFCM1HKppO49DiouuRjuUvxPWM2cOvRuar8EU7NgqJKu1jvuP9LDzA6kTgnm5sGoLSw== politruk@politruk-B450M-Steel-Legend"
+    
+    shape: "VM.Standard.A1.Flex"
+    ocpus: 4
+    memory_gb: 24
+    boot_volume_size_gb: 50
+    display_name: "arm-free-tier-vm-2"
+    hostname_label: "armvm2"
+
+retry:
+  base_interval_minutes: 15
+  max_interval_minutes: 120
+  exponential_backoff: true
+
+scheduler:
+  # Delay between checking different accounts (to avoid IP correlation)
+  account_delay_seconds: 450
+  # Loop forever? (True = Daemon mode, False = Run once for Cron)
+  # If looping, how long to wait between full cycles
+  cycle_interval_seconds: 60
+  
+logging:
+  level: "INFO"
+  log_dir: "logs"
+ 

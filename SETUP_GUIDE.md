@@ -34,7 +34,13 @@ Copy the values shown in the "Configuration File Preview" on the API Key page, o
 6.  **SSH Key**: You must provide your **Public SSH Key** string (contents of `~/.ssh/id_rsa.pub`) to access the VM later.
 
 ## 5. Configure the Application
+**Easiest Method:**
+Run the interactive wizard and paste the values you gathered above:
+```bash
+./oci-arm-provisioner --setup
+```
 
+**Manual Method:**
 Edit `config.yaml`:
 ```yaml
 accounts:

@@ -45,10 +45,11 @@ Run the app with the setup flag to interactively configure your alerts:
 ### Option 1: Manual Run (Easiest)
 1.  **Download** the latest release (or build it).
 2.  **Configure**:
+    Run the interactive wizard to set up your `.oci/` keys and `config.yaml`:
     ```bash
-    cp config.yaml.example config.yaml
-    # Edit config.yaml with your OCI details
+    ./oci-arm-provisioner --setup
     ```
+    *(Or manually copy `config.yaml.example` if you prefer)*
 3.  **Run**:
     ```bash
     ./oci-arm-provisioner

@@ -15,8 +15,8 @@ import (
 	"github.com/yourusername/oci-arm-provisioner/internal/notifier"
 )
 
-// Run starts the interactive notification setup wizard.
-func Run(l *logger.Logger) {
+// RunNotifications starts the interactive notification setup wizard.
+func RunNotifications(l *logger.Logger) {
 	reader := bufio.NewReader(os.Stdin)
 
 	l.Section("🔔 Notification Setup Wizard")

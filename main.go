@@ -21,6 +21,7 @@ import (
 func main() {
 	// 0. Parse Flags
 	setupNotifications := flag.Bool("setup-notifications", false, "Run the notification setup wizard")
+	setupOCI := flag.Bool("setup", false, "Run the OCI setup wizard (config.yaml)")
 	flag.Parse()
 
 	// 1. Setup Context with Cancellation
@@ -33,9 +34,13 @@ func main() {
 		panic(fmt.Sprintf("Failed to initialize logger: %v", err))
 	}
 
-	// Wizard Mode
+	// Wizard Modes
 	if *setupNotifications {
-		wizard.Run(l)
+		wizard.RunNotifications(l)
+		return
+	}
+	if *setupOCI {
+		wizard.RunOCI(l)
 		return
 	}
 
