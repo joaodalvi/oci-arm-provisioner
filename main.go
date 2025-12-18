@@ -5,25 +5,22 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"syscall"
 	"time"
 
+	"github.com/fsnotify/fsnotify"
 	"github.com/yourusername/oci-arm-provisioner/internal/config"
 	"github.com/yourusername/oci-arm-provisioner/internal/logger"
 	"github.com/yourusername/oci-arm-provisioner/internal/provisioner"
 )
 
-// main is the entry point of the application.
-// It initializes the logger, loads configuration, and starts the provisioning cycle loop.
-// It handles OS signals (SIGINT, SIGTERM) to perform a graceful shutdown.
 func main() {
-	// 1. Setup Context with Cancellation on Signal (SIGINT, SIGTERM)
-	// This ensures that hitting Ctrl+C cancels any active OCI requests immediately.
+	// 1. Setup Context with Cancellation
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer cancel()
 
 	// 2. Initialize Logger
-	// Start with a default logger pointing to the "logs" directory.
 	l, err := logger.New("logs")
 	if err != nil {
 		panic(fmt.Sprintf("Failed to initialize logger: %v", err))
@@ -32,8 +29,7 @@ func main() {
 	l.Section("🚀 OCI ARM Provisioner")
 	l.Plain(fmt.Sprintf("Version: %s", "0.1.0"))
 
-	// 3. Load Configuration
-	// We look for config.yaml in standard locations.
+	// 3. Load Initial Configuration
 	cfg, path, err := config.LoadConfig("")
 	if err != nil {
 		l.Error("INIT", fmt.Sprintf("Failed to load config: %v", err))
@@ -41,20 +37,116 @@ func main() {
 	}
 	l.Plain(fmt.Sprintf("📂 Config: %s", path))
 
-	// If the config specifies a different log directory, re-initialize the logger.
-	if cfg.Logging.LogDir != "logs" {
-		if newLogger, err := logger.New(cfg.Logging.LogDir); err == nil {
-			l = newLogger
+	// 4. Initialize Provisioner
+	prov := provisioner.New(cfg, l)
+	logAccountSummary(l, cfg)
+
+	// 5. Setup Config Watcher
+	watcher, err := fsnotify.NewWatcher()
+	if err != nil {
+		l.Error("INIT", fmt.Sprintf("Failed to create file watcher: %v", err))
+	} else {
+		defer watcher.Close()
+		// Watch the directory, not the file, to handle atomic replacements (sed/vim) checks.
+		configDir := filepath.Dir(path)
+		if err := watcher.Add(configDir); err != nil {
+			l.Error("INIT", fmt.Sprintf("Failed to watch config dir: %v", err))
 		} else {
-			l.Warn("INIT", fmt.Sprintf("Failed to switch to configured log_dir: %v. Using default.", err))
+			l.Plain(fmt.Sprintf("👀 Live Config Reload: Enabled (Watching %s)", configDir))
 		}
 	}
 
-	// 4. Initialize Provisioner
-	// The provisioner holds the OCI clients and logic for creating instances.
-	prov := provisioner.New(cfg, l)
+	// Channel to receive new configs from the watcher goroutine
+	configUpdates := make(chan *config.Config)
 
-	// Count and list enabled accounts for user feedback.
+	go func() {
+		lastModTime := time.Now()
+		// Polling ticker as fallback for Docker bind mount issues
+		poll := time.NewTicker(5 * time.Second)
+		defer poll.Stop()
+
+		for {
+			select {
+			case event, ok := <-watcher.Events:
+				if !ok {
+					return
+				}
+
+				if filepath.Base(event.Name) == filepath.Base(path) {
+					if event.Op&fsnotify.Write == fsnotify.Write || event.Op&fsnotify.Create == fsnotify.Create || event.Op&fsnotify.Rename == fsnotify.Rename {
+						l.Plain("🔄 Config change detected (fsnotify). Reloading...")
+						reload(l, path, configUpdates)
+						// Update mod time to prevent double-reload by poller
+						if info, err := os.Stat(path); err == nil {
+							lastModTime = info.ModTime()
+						}
+					}
+				}
+			case err, ok := <-watcher.Errors:
+				if !ok {
+					return
+				}
+				l.Error("WATCH", fmt.Sprintf("Watcher error: %v", err))
+
+			case <-poll.C:
+				// Fallback Polling
+				info, err := os.Stat(path)
+				if err == nil {
+					if info.ModTime().After(lastModTime) {
+						lastModTime = info.ModTime()
+						l.Plain("🔄 Config change detected (poller). Reloading...")
+						reload(l, path, configUpdates)
+					}
+				}
+			case <-ctx.Done():
+				return
+			}
+		}
+	}()
+
+	// 6. Main Execution Loop
+	interval := time.Duration(cfg.Scheduler.CycleIntervalSeconds) * time.Second
+	ticker := time.NewTicker(interval)
+	defer ticker.Stop()
+
+	cycleCount := 1
+
+	// Run first cycle immediately
+	runCycle(ctx, l, prov, interval, cycleCount)
+	cycleCount++
+
+	for {
+		select {
+		case <-ctx.Done():
+			l.Section("Shutdown Signal Received")
+			l.Plain("Exiting gracefully...")
+			return
+
+		case newCfg := <-configUpdates:
+			// Apply New Configuration
+			l.Success("RELOAD", "Configuration applied successfully!")
+
+			// 1. Update Provisioner
+			cfg = newCfg
+			prov = provisioner.New(cfg, l)
+			logAccountSummary(l, cfg)
+
+			// 2. Update Ticker if interval changed
+			newInterval := time.Duration(cfg.Scheduler.CycleIntervalSeconds) * time.Second
+			if newInterval != interval {
+				l.Plain(fmt.Sprintf("⏱️  Updating Schedule: %v -> %v", interval, newInterval))
+				interval = newInterval
+				ticker.Reset(interval)
+			}
+
+		case <-ticker.C:
+			runCycle(ctx, l, prov, interval, cycleCount)
+			cycleCount++
+		}
+	}
+}
+
+func logAccountSummary(l *logger.Logger, cfg *config.Config) {
 	count := 0
 	names := []string{}
 	for title, acc := range cfg.Accounts {
@@ -65,51 +157,19 @@ func main() {
 	}
 	l.Plain(fmt.Sprintf("👥 Accounts: %v", names))
 
-	// If only 1 account, log special mode
 	if count == 1 {
 		l.Plain("ℹ️  Single Account Mode Active")
 	}
-
 	if count == 0 {
-		l.Warn("INIT", "No accounts enabled. Exiting.")
-		return
-	}
-
-	// 5. Main Execution Loop
-	// We use a Ticker to trigger the provisioning cycle at fixed intervals.
-	interval := time.Duration(cfg.Scheduler.CycleIntervalSeconds) * time.Second
-	ticker := time.NewTicker(interval)
-	defer ticker.Stop()
-
-	cycleCount := 1
-
-	// Run the first cycle immediately before waiting for the ticker.
-	runCycle(ctx, l, prov, interval, cycleCount)
-	cycleCount++
-
-	for {
-		select {
-		case <-ctx.Done():
-			// Handle graceful shutdown when signal is received.
-			l.Section("Shutdown Signal Received")
-			l.Plain("Exiting gracefully...")
-			return
-		case <-ticker.C:
-			// Trigger a new provisioning cycle.
-			runCycle(ctx, l, prov, interval, cycleCount)
-			cycleCount++
-		}
+		l.Warn("INIT", "No accounts enabled. The tool will just idle.")
 	}
 }
 
 // runCycle executes a single pass of the provisioning logic.
-// It wraps the provisioner call with logging for cycle duration.
 func runCycle(ctx context.Context, l *logger.Logger, prov *provisioner.Provisioner, interval time.Duration, count int) {
 	start := time.Now()
 	l.Section(fmt.Sprintf("Cycle %d Started at %s", count, start.Format("2006-01-02 15:04:05")))
 
-	// Execute the provisioning logic for all accounts.
-	// We pass the context so requests can be cancelled if the app is stopping.
 	prov.RunCycle(ctx)
 
 	elapsed := time.Since(start)
