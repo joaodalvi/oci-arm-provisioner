@@ -65,12 +65,15 @@ func main() {
 	}
 	l.Plain(fmt.Sprintf("Found %d enabled accounts: %v", count, names))
 
+	// If only 1 account, log special mode
+	if count == 1 {
+		l.Plain("Running in Single Account Mode")
+	}
+
 	if count == 0 {
 		l.Warn("INIT", "No accounts enabled. Exiting.")
 		return
 	}
-
-	l.Section("Starting Cycle")
 
 	// 5. Main Execution Loop
 	// We use a Ticker to trigger the provisioning cycle at fixed intervals.
@@ -78,8 +81,11 @@ func main() {
 	ticker := time.NewTicker(interval)
 	defer ticker.Stop()
 
+	cycleCount := 1
+
 	// Run the first cycle immediately before waiting for the ticker.
-	runCycle(ctx, l, prov, interval)
+	runCycle(ctx, l, prov, interval, cycleCount)
+	cycleCount++
 
 	for {
 		select {
@@ -90,16 +96,17 @@ func main() {
 			return
 		case <-ticker.C:
 			// Trigger a new provisioning cycle.
-			runCycle(ctx, l, prov, interval)
+			runCycle(ctx, l, prov, interval, cycleCount)
+			cycleCount++
 		}
 	}
 }
 
 // runCycle executes a single pass of the provisioning logic.
 // It wraps the provisioner call with logging for cycle duration.
-func runCycle(ctx context.Context, l *logger.Logger, prov *provisioner.Provisioner, interval time.Duration) {
-	l.Section("Cycle Started")
+func runCycle(ctx context.Context, l *logger.Logger, prov *provisioner.Provisioner, interval time.Duration, count int) {
 	start := time.Now()
+	l.Section(fmt.Sprintf("Cycle %d Started at %s", count, start.Format("2006-01-02 15:04:05")))
 
 	// Execute the provisioning logic for all accounts.
 	// We pass the context so requests can be cancelled if the app is stopping.
