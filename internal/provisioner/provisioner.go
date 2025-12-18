@@ -224,7 +224,11 @@ func (w *AccountWorker) initClients() error {
 // Provision attempts to create the configured instance.
 // It checks for existing instances, resolves the AD, and handles OCI errors/retries.
 // Returns: (success, retryable, error)
-func (w *AccountWorker) Provision(ctx context.Context) (bool, bool, error) {
+func (w *AccountWorker) Provision(parentCtx context.Context) (bool, bool, error) {
+	// Add timeout to prevent hanging on network issues
+	ctx, cancel := context.WithTimeout(parentCtx, 60*time.Second)
+	defer cancel()
+
 	if err := w.initClients(); err != nil {
 		return false, false, err
 	}
