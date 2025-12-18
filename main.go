@@ -179,3 +179,16 @@ func runCycle(ctx context.Context, l *logger.Logger, prov *provisioner.Provision
 	l.Plain(fmt.Sprintf("💤 Sleeping %v (Next run at %s)...",
 		interval, nextRun.Format("15:04:05")))
 }
+
+// Helper to reload config safely
+// Helper to reload config safely
+func reload(l *logger.Logger, path string, updates chan<- *config.Config) {
+	// Debounce/Settle
+	time.Sleep(100 * time.Millisecond)
+	newCfg, _, err := config.LoadConfig(path)
+	if err != nil {
+		l.Error("RELOAD", fmt.Sprintf("Failed to reload config: %v (keeping old config)", err))
+		return
+	}
+	updates <- newCfg
+}
