@@ -2,10 +2,13 @@ package wizard
 
 import (
 	"bufio"
+	"encoding/json"
 	"fmt"
+	"net/http"
 	"os"
 	"regexp"
 	"strings"
+	"time"
 
 	"github.com/yourusername/oci-arm-provisioner/internal/config"
 	"github.com/yourusername/oci-arm-provisioner/internal/logger"
@@ -22,122 +25,175 @@ func Run(l *logger.Logger) {
 
 	// 1. Select Platform
 	fmt.Println("Select your platform:")
-	fmt.Println("1. Discord")
-	fmt.Println("2. Slack")
+	fmt.Println("1. Discord / Slack")
+	fmt.Println("2. Telegram")
 	fmt.Print("Enter choice (1/2): ")
 	choice, _ := reader.ReadString('\n')
 	choice = strings.TrimSpace(choice)
 
-	var instructions string
-	switch choice {
-	case "1":
-		instructions = `
---- Discord Setup Instructions ---
-1. Go to your Server Settings -> Integrations -> Webhooks.
-2. Click "New Webhook".
-3. Select the channel where you want notifications.
-4. Click "Copy Webhook URL".
-`
-	case "2":
-		instructions = `
---- Slack Setup Instructions ---
-1. Create an Incoming Webhook for your workspace.
-2. Select the channel.
-3. Copy the "Webhook URL" (starts with https://hooks.slack.com/...)
-`
-	default:
-		l.Error("WIZARD", "Invalid choice. Exiting.")
+	var webhookURL, telegramToken, telegramChatID string
+
+	if choice == "1" {
+		// Discord/Slack Flow
+		fmt.Println("\n--- Discord/Slack Setup ---")
+		fmt.Println("1. Go to Server Settings -> Integrations -> Webhooks (Discord)")
+		fmt.Println("   OR Create an Incoming Webhook (Slack)")
+		fmt.Println("2. Copy the URL.")
+		fmt.Print("👉 Paste the Webhook URL: ")
+		webhookURL, _ = reader.ReadString('\n')
+		webhookURL = strings.TrimSpace(webhookURL)
+	} else if choice == "2" {
+		// Telegram Flow
+		fmt.Println("\n--- Telegram Setup ---")
+		fmt.Println("1. Open Telegram and search for @BotFather")
+		fmt.Println("2. Create a new bot with /newbot")
+		fmt.Println("3. Copy the HTTP API Token.")
+		fmt.Print("👉 Paste Bot Token: ")
+		telegramToken, _ = reader.ReadString('\n')
+		telegramToken = strings.TrimSpace(telegramToken)
+
+		if telegramToken == "" {
+			l.Error("WIZARD", "Token required.")
+			return
+		}
+
+		fmt.Println("\n⏳ Identifying Chat ID...")
+		fmt.Println("👉 Please send a message (e.g. /start) to your bot in Telegram NOW.")
+
+		chatID, err := pollTelegramChatID(telegramToken)
+		if err != nil {
+			l.Error("WIZARD", fmt.Sprintf("Failed to detect Chat ID: %v", err))
+			fmt.Println("You can try again or enter Chat ID manually if you know it.")
+			fmt.Print("Enter Chat ID (optional, press enter to skip): ")
+			telegramChatID, _ = reader.ReadString('\n')
+			telegramChatID = strings.TrimSpace(telegramChatID)
+		} else {
+			telegramChatID = chatID
+			l.Success("WIZARD", fmt.Sprintf("✅ Detected Chat ID: %s", telegramChatID))
+		}
+	} else {
+		l.Error("WIZARD", "Invalid choice.")
 		return
 	}
 
-	fmt.Println(instructions)
-	fmt.Print("👉 Paste the Webhook URL here: ")
-	url, _ := reader.ReadString('\n')
-	url = strings.TrimSpace(url)
-
-	if url == "" {
-		l.Error("WIZARD", "Empty URL provided. Exiting.")
-		return
-	}
-
-	// 2. Test the URL
+	// 2. Test Configuration
 	fmt.Println("\nTesting connection...")
 	testCfg := config.NotificationConfig{
-		Enabled:    true,
-		WebhookURL: url,
+		Enabled:        true,
+		WebhookURL:     webhookURL,
+		TelegramToken:  telegramToken,
+		TelegramChatID: telegramChatID,
 	}
 	n := notifier.New(testCfg)
 
-	// Create a dummy success message for testing
 	err := n.SendSuccess("TEST-ACCOUNT", "test-instance-id", "test-region")
 	if err != nil {
-		l.Error("WIZARD", fmt.Sprintf("❌ Failed to send test message: %v", err))
-		fmt.Print("Do you want to save anyway? (y/n): ")
+		l.Error("WIZARD", fmt.Sprintf("❌ Test failed: %v", err))
+		fmt.Print("Save anyway? (y/n): ")
 		confirm, _ := reader.ReadString('\n')
 		if strings.ToLower(strings.TrimSpace(confirm)) != "y" {
 			return
 		}
 	} else {
-		l.Success("WIZARD", "✅ Test message sent successfully!")
+		l.Success("WIZARD", "✅ Test message sent!")
 	}
 
 	// 3. Save to Config
-	if err := saveConfig(url); err != nil {
-		l.Error("WIZARD", fmt.Sprintf("Failed to update config.yaml: %v", err))
-		fmt.Println("Please manually update 'webhook_url' in your config.yaml.")
+	if err := saveConfig(webhookURL, telegramToken, telegramChatID); err != nil {
+		l.Error("WIZARD", fmt.Sprintf("Failed to save config: %v", err))
 	} else {
-		l.Success("WIZARD", "✅ config.yaml updated successfully!")
-		fmt.Println("Run the app again without flags to start.")
+		l.Success("WIZARD", "✅ Config updated successfully!")
 	}
 }
 
-// saveConfig attempts to update the webhook_url in config.yaml preserving comments.
-func saveConfig(url string) error {
-	// Locate config file
-	path := "config.yaml" // Default preference
-	if _, err := os.Stat(path); os.IsNotExist(err) {
-		// Try finding it if not in CWD? user might be running from elsewhere
-		// For simplicity, we assume running from project root for wizard.
-		return fmt.Errorf("config.yaml not found in current directory")
-	}
+func pollTelegramChatID(token string) (string, error) {
+	url := fmt.Sprintf("https://api.telegram.org/bot%s/getUpdates", token)
+	client := http.Client{Timeout: 5 * time.Second}
 
+	// Poll for 30 seconds
+	attempts := 6
+	for i := 0; i < attempts; i++ {
+		resp, err := client.Get(url)
+		if err == nil {
+			var result struct {
+				Ok     bool `json:"ok"`
+				Result []struct {
+					Message struct {
+						Chat struct {
+							ID int64 `json:"id"`
+						} `json:"chat"`
+					} `json:"message"`
+				} `json:"result"`
+			}
+			if json.NewDecoder(resp.Body).Decode(&result) == nil {
+				if result.Ok && len(result.Result) > 0 {
+					return fmt.Sprintf("%d", result.Result[0].Message.Chat.ID), nil
+				}
+			}
+			resp.Body.Close()
+		}
+		time.Sleep(3 * time.Second)
+		fmt.Print(".")
+	}
+	return "", fmt.Errorf("timeout waiting for message")
+}
+
+// saveConfig updates valid fields in config.yaml
+func saveConfig(webhook, tgToken, tgChatID string) error {
+	path := "config.yaml"
 	content, err := os.ReadFile(path)
 	if err != nil {
 		return err
 	}
-
-	stats, err := os.Stat(path)
-	if err != nil {
-		return err
-	}
-
 	lines := strings.Split(string(content), "\n")
 	updatedLines := make([]string, 0, len(lines))
 
-	// Regex to find "webhook_url:" key (ignoring comments)
-	re := regexp.MustCompile(`^\s*webhook_url:.*`)
-	// Regex to find "enabled:" under notifications (tricky without parsing structure)
-	// We will just replace webhook_url and tell user to ensure enabled is true if we can't easily find context.
-	// Actually, let's just replace webhook_url.
+	// Simple key replacement map
+	replacements := make(map[string]string)
+	if webhook != "" {
+		replacements["webhook_url"] = webhook
+	}
+	if tgToken != "" {
+		replacements["telegram_token"] = tgToken
+	}
+	if tgChatID != "" {
+		replacements["telegram_chat_id"] = tgChatID
+	}
 
-	found := false
+	// Allow adding missing keys if logic permits, but regex replacement is safer for existing files.
+	// For simplicity, we assume keys exist or we warn.
+	// To robustly add keys, we should check if they are missing.
+
+	// Track if we found them
+	found := make(map[string]bool)
+
 	for _, line := range lines {
-		if re.MatchString(line) {
-			// Preserve indentation
-			prefix := line[:strings.Index(line, "webhook_url")]
-			updatedLines = append(updatedLines, fmt.Sprintf("%swebhook_url: \"%s\"", prefix, url))
-			found = true
-		} else {
+		replaced := false
+		for key, val := range replacements {
+			re := regexp.MustCompile(fmt.Sprintf(`^\s*%s:.*`, key))
+			if re.MatchString(line) {
+				prefix := line[:strings.Index(line, key)]
+				updatedLines = append(updatedLines, fmt.Sprintf("%s%s: \"%s\"", prefix, key, val))
+				found[key] = true
+				replaced = true
+				break
+			}
+		}
+		if !replaced {
 			updatedLines = append(updatedLines, line)
 		}
 	}
 
-	if !found {
-		// If not found, it might be commented out or missing.
-		// Append to end is risky.
-		return fmt.Errorf("could not find 'webhook_url' key in config.yaml. Please add it manually.")
+	// Attempt to handle missing keys by appending to "notifications:" block? Too complex with regex.
+	// We will just warn if keys were not found.
+	for k := range replacements {
+		if !found[k] {
+			// Fail-safe: Suggest manual addition
+			fmt.Printf("⚠️  Key '%s' not found in config.yaml. Please add it manually.\n", k)
+		}
 	}
 
 	output := strings.Join(updatedLines, "\n")
-	return os.WriteFile(path, []byte(output), stats.Mode())
+	info, _ := os.Stat(path)
+	return os.WriteFile(path, []byte(output), info.Mode())
 }

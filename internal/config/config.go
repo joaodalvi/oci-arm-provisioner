@@ -73,9 +73,11 @@ type SchedulerConfig struct {
 // NotificationConfig holds settings for alerting the user on success/failure.
 type NotificationConfig struct {
 	Enabled        bool   `yaml:"enabled"`
-	WebhookURL     string `yaml:"webhook_url"`     // Generic Webhook (Discord/Slack compatible)
-	InsistentPing  bool   `yaml:"insistent_ping"`  // If true, adds @everyone or similar to success Msg.
-	DigestInterval string `yaml:"digest_interval"` // e.g., "24h", "1h". Empty = disabled.
+	WebhookURL     string `yaml:"webhook_url"`      // Generic Webhook (Discord/Slack compatible)
+	TelegramToken  string `yaml:"telegram_token"`   // Telegram Bot Token
+	TelegramChatID string `yaml:"telegram_chat_id"` // Telegram Chat/Channel ID
+	InsistentPing  bool   `yaml:"insistent_ping"`   // If true, adds @everyone or similar to success Msg.
+	DigestInterval string `yaml:"digest_interval"`  // e.g., "24h", "1h". Empty = disabled.
 }
 
 // Deprecated: WebhookConfig is merged into top-level for simplicity, or we keep it if we want multiple providers later.
