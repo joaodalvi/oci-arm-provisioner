@@ -122,8 +122,17 @@ func LoadConfig(path string) (*Config, string, error) {
 		return nil, loadPath, fmt.Errorf("error parsing yaml: %w", err)
 	}
 
-	// Post-Process Paths: Expand shortcuts and absolute paths.
-	for _, acc := range cfg.Accounts {
+	// Post-Process Paths & Validation
+	for name, acc := range cfg.Accounts {
+		if !acc.Enabled {
+			continue
+		}
+
+		// Validation: Check for required fields to prevent runtime OCI errors
+		if acc.UserOCID == "" || acc.TenancyOCID == "" || acc.Fingerprint == "" || acc.Region == "" {
+			return nil, loadPath, fmt.Errorf("account '%s' follows invalid configuration: missing required OCID/Fingerprint/Region", name)
+		}
+
 		// Expand user home directory tilde (~).
 		if strings.HasPrefix(acc.KeyFile, "~") {
 			usr, _ := user.Current()
@@ -135,6 +144,12 @@ func LoadConfig(path string) (*Config, string, error) {
 		if abs, err := filepath.Abs(acc.KeyFile); err == nil {
 			acc.KeyFile = abs
 		}
+	}
+
+	// Security/Stability: Enforce minimum cycle interval to prevent CPU spinning or API bans.
+	const MinCycleInterval = 10
+	if cfg.Scheduler.CycleIntervalSeconds < MinCycleInterval {
+		cfg.Scheduler.CycleIntervalSeconds = MinCycleInterval
 	}
 
 	return &cfg, loadPath, nil

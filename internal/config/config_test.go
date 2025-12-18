@@ -16,6 +16,8 @@ accounts:
   test_account:
     enabled: true
     user_ocid: "ocid.user.1"
+    tenancy_ocid: "ocid.tenancy.1"
+    fingerprint: "aa:bb:cc"
     key_file: "~/keys/oci.pem"
     region: "us-ashburn-1"
 retry:
@@ -77,5 +79,27 @@ func TestParsing_Error(t *testing.T) {
 	_, _, err := LoadConfig(configFile)
 	if err == nil {
 		t.Error("expected error for invalid yaml, got nil")
+	}
+}
+
+func TestLoadConfig_MinInterval(t *testing.T) {
+	tmpDir := t.TempDir()
+	configFile := filepath.Join(tmpDir, "min_interval.yaml")
+
+	mockConfig := `
+scheduler:
+  cycle_interval_seconds: 0
+`
+	if err := os.WriteFile(configFile, []byte(mockConfig), 0644); err != nil {
+		t.Fatalf("failed to write mock config: %v", err)
+	}
+
+	cfg, _, err := LoadConfig(configFile)
+	if err != nil {
+		t.Fatalf("LoadConfig failed: %v", err)
+	}
+
+	if cfg.Scheduler.CycleIntervalSeconds != 10 {
+		t.Errorf("expected cycle interval clamped to 10, got %d", cfg.Scheduler.CycleIntervalSeconds)
 	}
 }
