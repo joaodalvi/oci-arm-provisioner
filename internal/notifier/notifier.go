@@ -10,11 +10,13 @@ import (
 	"github.com/yourusername/oci-arm-provisioner/internal/config"
 )
 
+// Notifier handles sending alerts to various platforms (Discord, Telegram, Ntfy).
 type Notifier struct {
 	Config config.NotificationConfig
 	Client *http.Client
 }
 
+// New creates a new Notifier instance with the given configuration.
 func New(cfg config.NotificationConfig) *Notifier {
 	return &Notifier{
 		Config: cfg,
@@ -167,6 +169,8 @@ func (n *Notifier) sendGotify(message, title string, priority int) error {
 
 // --- Public API ---
 
+// SendSuccess triggers a "Success" alert to all enabled providers.
+// Returns an aggregate error if any provider fails.
 func (n *Notifier) SendSuccess(account, instanceID, region string) error {
 	var errs []error
 
@@ -241,6 +245,7 @@ type Stats struct {
 	LastSuccess    time.Time
 }
 
+// SendDigest triggers a status report alert to all enabled providers.
 func (n *Notifier) SendDigest(stats Stats) error {
 	uptime := time.Since(stats.StartTime).Round(time.Second)
 	var errs []error
