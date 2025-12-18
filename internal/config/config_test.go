@@ -50,6 +50,10 @@ retry:
 	if acc.UserOCID != "ocid.user.1" {
 		t.Errorf("wrong user ocid")
 	}
+	// Default check (if not in yaml, string is empty? or we should test setting it)
+	if acc.Region != "us-ashburn-1" {
+		t.Errorf("wrong region")
+	}
 
 	// Verify Path Expansion
 	// Should be absolute
