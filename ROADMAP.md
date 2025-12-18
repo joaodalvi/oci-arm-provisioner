@@ -16,6 +16,9 @@ The goal is to move beyond simple generic webhooks and support platform-native i
 - [ ] **Gmail / OAuth2**: Secure, modern authentication support for Gmail users (avoiding "Less Secure Apps").
 - [ ] **Status Reports**: Optional periodic email summaries (e.g., "Still running... checked 100 times today").
 
+### 🧠 Smart Workflow
+- [ ] **Sequential Cooldown**: If an account succeeds (instance created), pause the *entire* loop for X minutes before trying the next account. This prevents "hoarding" behavior and mimics human delays.
+
 ## 🔮 Future Ideas (v0.x.x)
 
 - **Browser Notifications**: Native desktop notifications if running locally.
