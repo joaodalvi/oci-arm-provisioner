@@ -24,7 +24,8 @@ The goal is to move beyond simple generic webhooks and support platform-native i
 ## 🔮 Future Ideas (v0.x.x)
 
 - **Browser Notifications**: Native desktop notifications if running locally.
-- **TUI Dashboard**: A terminal user interface to view active threads and logs in real-time.
+- [x] **TUI Dashboard**: A terminal user interface to view active threads and logs in real-time.
+- **Client-Server Architecture**: Split app into Daemon/Worker and TUI Client (gRPC/Socket) for persistent background operation.
 - **Prometheus Metrics**: Export metrics for Grafana dashboards.
 
 ---
