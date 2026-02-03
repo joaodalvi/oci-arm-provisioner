@@ -28,3 +28,4 @@ go.work
 .idea/
 *.swp
 PUBLIC_KEYS_TO_UPLOAD.txt
+dist/

@@ -93,3 +93,69 @@ func TestLogger_Concurrency(t *testing.T) {
 	}
 	// Pass if no data race/panic
 }
+
+// --- Celebrate Tests ---
+
+// mockDetails implements the verifiedDetails interface for Celebrate
+type mockCelebrateDetails struct{}
+
+func (m *mockCelebrateDetails) GetInstanceID() string { return "inst-123" }
+func (m *mockCelebrateDetails) GetPublicIP() string   { return "10.0.0.1" }
+func (m *mockCelebrateDetails) GetOCPUs() float32     { return 4 }
+func (m *mockCelebrateDetails) GetMemoryGB() float32  { return 24 }
+func (m *mockCelebrateDetails) GetState() string      { return "RUNNING" }
+func (m *mockCelebrateDetails) GetRegion() string     { return "us-ashburn-1" }
+
+func TestLogger_Celebrate(t *testing.T) {
+	tempDir := t.TempDir()
+	logDir := filepath.Join(tempDir, "logs")
+
+	l, err := New(logDir)
+	if err != nil {
+		t.Fatalf("Failed to create logger: %v", err)
+	}
+
+	// Call Celebrate without panic
+	l.Celebrate("test-account", nil)
+
+	// Verify file log contains success marker
+	logPath := filepath.Join(logDir, "provisioner.log")
+	content, err := os.ReadFile(logPath)
+	if err != nil {
+		t.Fatalf("Failed to read log file: %v", err)
+	}
+
+	if !strings.Contains(string(content), "[SUCCESS]") {
+		t.Error("Log file missing SUCCESS marker after Celebrate")
+	}
+
+	if !strings.Contains(string(content), "test-account") {
+		t.Error("Log file missing account name after Celebrate")
+	}
+}
+
+func TestLogger_Celebrate_WithDetails(t *testing.T) {
+	tempDir := t.TempDir()
+	logDir := filepath.Join(tempDir, "logs")
+
+	l, err := New(logDir)
+	if err != nil {
+		t.Fatalf("Failed to create logger: %v", err)
+	}
+
+	details := &mockCelebrateDetails{}
+
+	// Call Celebrate with details - should not panic
+	l.Celebrate("test-account", details)
+
+	// Verify file log contains success marker
+	logPath := filepath.Join(logDir, "provisioner.log")
+	content, err := os.ReadFile(logPath)
+	if err != nil {
+		t.Fatalf("Failed to read log file: %v", err)
+	}
+
+	if !strings.Contains(string(content), "INSTANCE PROVISIONED") {
+		t.Error("Log file missing celebration text")
+	}
+}

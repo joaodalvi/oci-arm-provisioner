@@ -164,3 +164,117 @@ func TestNotifier_SendDigest(t *testing.T) {
 		t.Error("Digest did not fire for all providers")
 	}
 }
+
+// --- SendSuccessVerified Tests ---
+
+// mockVerifiedDetails implements VerifiedInstanceDetails interface for testing
+type mockVerifiedDetails struct {
+	instanceID string
+	publicIP   string
+	ocpus      float32
+	memoryGB   float32
+	state      string
+	region     string
+}
+
+func (m *mockVerifiedDetails) GetInstanceID() string { return m.instanceID }
+func (m *mockVerifiedDetails) GetPublicIP() string   { return m.publicIP }
+func (m *mockVerifiedDetails) GetOCPUs() float32     { return m.ocpus }
+func (m *mockVerifiedDetails) GetMemoryGB() float32  { return m.memoryGB }
+func (m *mockVerifiedDetails) GetState() string      { return m.state }
+func (m *mockVerifiedDetails) GetRegion() string     { return m.region }
+
+func TestSendSuccessVerified_AllProviders(t *testing.T) {
+	cfg := config.NotificationConfig{
+		Enabled:        true,
+		InsistentPing:  true,
+		WebhookURL:     "http://discord.mock",
+		TelegramToken:  "tg-token",
+		TelegramChatID: "tg-chat",
+		NtfyTopic:      "ntfy-topic",
+		GotifyURL:      "http://gotify.mock",
+		GotifyToken:    "gotify-token",
+	}
+
+	n := New(cfg)
+	hits := make(map[string]bool)
+
+	n.Client.Transport = &mockTransport{
+		RoundTripFunc: func(req *http.Request) (*http.Response, error) {
+			url := req.URL.String()
+
+			if strings.Contains(url, "discord") {
+				hits["discord"] = true
+				var p discordPayload
+				json.NewDecoder(req.Body).Decode(&p)
+				// Verify verified message format
+				if len(p.Embeds) > 0 {
+					embed := p.Embeds[0]
+					if !strings.Contains(embed.Title, "Verified") {
+						t.Error("Discord missing 'Verified' in title")
+					}
+					// Check for Public IP field
+					hasIPField := false
+					for _, f := range embed.Fields {
+						if f.Name == "Public IP" {
+							hasIPField = true
+						}
+					}
+					if !hasIPField {
+						t.Error("Discord missing Public IP field")
+					}
+				}
+			} else if strings.Contains(url, "telegram") {
+				hits["telegram"] = true
+				var p telegramPayload
+				json.NewDecoder(req.Body).Decode(&p)
+				if !strings.Contains(p.Text, "Verified") {
+					t.Error("Telegram missing 'Verified' in text")
+				}
+				if !strings.Contains(p.Text, "203.0.113.1") {
+					t.Error("Telegram missing public IP")
+				}
+			} else if strings.Contains(url, "ntfy") {
+				hits["ntfy"] = true
+			} else if strings.Contains(url, "gotify") {
+				hits["gotify"] = true
+			}
+
+			return &http.Response{StatusCode: 200, Body: io.NopCloser(bytes.NewBufferString("{}"))}, nil
+		},
+	}
+
+	details := &mockVerifiedDetails{
+		instanceID: "ocid1.instance.test",
+		publicIP:   "203.0.113.1",
+		ocpus:      4,
+		memoryGB:   24,
+		state:      "RUNNING",
+		region:     "us-ashburn-1",
+	}
+
+	if err := n.SendSuccessVerified("test-account", details); err != nil {
+		t.Fatalf("SendSuccessVerified failed: %v", err)
+	}
+
+	expected := []string{"discord", "telegram", "ntfy", "gotify"}
+	for _, p := range expected {
+		if !hits[p] {
+			t.Errorf("Provider %s was not called", p)
+		}
+	}
+}
+
+func TestSendSuccessVerified_NilDetails(t *testing.T) {
+	cfg := config.NotificationConfig{
+		Enabled:    true,
+		WebhookURL: "http://test.mock",
+	}
+
+	n := New(cfg)
+
+	err := n.SendSuccessVerified("test", nil)
+	if err == nil {
+		t.Error("expected error for nil details")
+	}
+}

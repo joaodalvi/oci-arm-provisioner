@@ -6,11 +6,13 @@ import (
 )
 
 type Tracker struct {
-	mu             sync.Mutex
-	StartTime      time.Time
-	TotalCycles    int
-	CapacityErrors int
-	OtherErrors    int
+	mu              sync.Mutex
+	StartTime       time.Time
+	TotalCycles     int
+	CapacityErrors  int
+	OtherErrors     int
+	SuccessCount    int
+	LastSuccessTime time.Time
 }
 
 func NewTracker() *Tracker {
@@ -37,13 +39,22 @@ func (t *Tracker) IncError() {
 	t.OtherErrors++
 }
 
+func (t *Tracker) IncSuccess() {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	t.SuccessCount++
+	t.LastSuccessTime = time.Now()
+}
+
 func (t *Tracker) Snapshot() Stats {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 	return Stats{
-		StartTime:      t.StartTime,
-		TotalCycles:    t.TotalCycles,
-		CapacityErrors: t.CapacityErrors,
-		OtherErrors:    t.OtherErrors,
+		StartTime:       t.StartTime,
+		TotalCycles:     t.TotalCycles,
+		CapacityErrors:  t.CapacityErrors,
+		OtherErrors:     t.OtherErrors,
+		SuccessCount:    t.SuccessCount,
+		LastSuccessTime: t.LastSuccessTime,
 	}
 }

@@ -1,0 +1,37 @@
+accounts:
+  demo_account:
+    enabled: true
+    user_ocid: "ocid1.user.demo"
+    tenancy_ocid: "ocid1.tenancy.demo"
+    fingerprint: "aa:bb:cc:dd:ee:ff"
+    key_file: "/tmp/demo_key.pem"
+    region: "us-ashburn-1"
+    compartment_id: "ocid1.compartment.demo"
+    subnet_id: "ocid1.subnet.demo"
+    image_id: "ocid1.image.demo"
+    ocpus: 4
+    memory_gb: 24
+    boot_volume_size_gb: 50
+    display_name: "arm-instance"
+
+  secondary_account:
+    enabled: true
+    user_ocid: "ocid1.user.secondary"
+    tenancy_ocid: "ocid1.tenancy.secondary"
+    fingerprint: "11:22:33:44:55:66"
+    key_file: "/tmp/demo_key.pem"
+    region: "eu-frankfurt-1"
+    compartment_id: "ocid1.compartment.secondary"
+    subnet_id: "ocid1.subnet.secondary"
+    image_id: "ocid1.image.secondary"
+    ocpus: 2
+    memory_gb: 12
+    boot_volume_size_gb: 100
+    display_name: "arm-eu"
+
+scheduler:
+  cycle_interval_seconds: 30
+  account_delay_seconds: 5
+
+logging:
+  log_dir: "logs"

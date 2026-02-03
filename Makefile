@@ -26,6 +26,8 @@ clean:
 	rm -f logs/*.log
 
 run: build
+	@mkdir -p logs
+	@chmod 755 logs
 	./$(BINARY_NAME)
 
 # Docker

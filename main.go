@@ -15,6 +15,7 @@ import (
 	"github.com/yourusername/oci-arm-provisioner/internal/logger"
 	"github.com/yourusername/oci-arm-provisioner/internal/notifier"
 	"github.com/yourusername/oci-arm-provisioner/internal/provisioner"
+	"github.com/yourusername/oci-arm-provisioner/internal/tui"
 	"github.com/yourusername/oci-arm-provisioner/internal/wizard"
 )
 
@@ -22,6 +23,7 @@ func main() {
 	// 0. Parse Flags
 	setupNotifications := flag.Bool("setup-notifications", false, "Run the notification setup wizard")
 	setupOCI := flag.Bool("setup", false, "Run the OCI setup wizard (config.yaml)")
+	headless := flag.Bool("headless", false, "Run in headless mode (log-only, no TUI)")
 	flag.Parse()
 
 	// 1. Setup Context with Cancellation
@@ -44,23 +46,35 @@ func main() {
 		return
 	}
 
-	l.Section("🚀 OCI ARM Provisioner")
-	l.Plain(fmt.Sprintf("Version: %s", "0.1.0"))
-
 	// 3. Load Initial Configuration
 	cfg, path, err := config.LoadConfig("")
 	if err != nil {
 		l.Error("INIT", fmt.Sprintf("Failed to load config: %v", err))
 		os.Exit(1)
 	}
+
+	// 4. Initialize Tracker
+	tracker := notifier.NewTracker()
+
+	// 5. Run TUI or Headless mode
+	if !*headless {
+		// TUI Mode (default) - runs provisioner in background
+		if err := tui.Run(cfg, tracker, l); err != nil {
+			l.Error("TUI", fmt.Sprintf("TUI error: %v", err))
+			os.Exit(1)
+		}
+		return
+	}
+
+	// Headless Mode (original behavior)
+	l.Section("🚀 OCI ARM Provisioner (Headless Mode)")
+	l.Plain(fmt.Sprintf("Version: %s", "0.1.0"))
 	l.Plain(fmt.Sprintf("📂 Config: %s", path))
 
-	// 4. Initialize Tracker & Provisioner
-	tracker := notifier.NewTracker()
+	// Initialize Provisioner for headless mode
 	prov := provisioner.New(cfg, l, tracker)
 	logAccountSummary(l, cfg)
 
-	// 5. Setup Config Watcher
 	watcher, err := fsnotify.NewWatcher()
 	if err != nil {
 		l.Error("INIT", fmt.Sprintf("Failed to create file watcher: %v", err))

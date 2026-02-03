@@ -22,6 +22,13 @@ import (
 type ComputeClientOps interface {
 	LaunchInstance(ctx context.Context, request core.LaunchInstanceRequest) (core.LaunchInstanceResponse, error)
 	ListInstances(ctx context.Context, request core.ListInstancesRequest) (core.ListInstancesResponse, error)
+	GetInstance(ctx context.Context, request core.GetInstanceRequest) (core.GetInstanceResponse, error)
+	ListVnicAttachments(ctx context.Context, request core.ListVnicAttachmentsRequest) (core.ListVnicAttachmentsResponse, error)
+}
+
+// VirtualNetworkClientOps defines the interface for OCI Virtual Network operations.
+type VirtualNetworkClientOps interface {
+	GetVnic(ctx context.Context, request core.GetVnicRequest) (core.GetVnicResponse, error)
 }
 
 // IdentityClientOps defines the interface for OCI Identity operations.
@@ -44,11 +51,12 @@ func (p *SimpleConfigProvider) PrivateRSAKey() (*rsa.PrivateKey, error) {
 // Provisioner is the main manager that orchestrates provisioning across multiple accounts.
 // It holds the workers (one per account) and global configuration.
 type Provisioner struct {
-	Config   *config.Config
-	Logger   *logger.Logger
-	Notifier *notifier.Notifier
-	Tracker  *notifier.Tracker
-	Workers  []*AccountWorker // List of initialized workers for enabled accounts.
+	Config      *config.Config
+	Logger      *logger.Logger
+	Notifier    *notifier.Notifier
+	Tracker     *notifier.Tracker
+	Workers     []*AccountWorker // List of initialized workers for enabled accounts.
+	Provisioned map[string]bool  // Tracks accounts that have successfully provisioned.
 }
 
 // New initializes the Provisioner manager.
@@ -57,11 +65,12 @@ func New(cfg *config.Config, log *logger.Logger, tracker *notifier.Tracker) *Pro
 	n := notifier.New(cfg.Notifications)
 
 	p := &Provisioner{
-		Config:   cfg,
-		Logger:   log,
-		Notifier: n,
-		Tracker:  tracker,
-		Workers:  make([]*AccountWorker, 0),
+		Config:      cfg,
+		Logger:      log,
+		Notifier:    n,
+		Tracker:     tracker,
+		Workers:     make([]*AccountWorker, 0),
+		Provisioned: make(map[string]bool),
 	}
 
 	// Initialize workers for all enabled accounts
@@ -93,11 +102,21 @@ func (p *Provisioner) RunCycle(ctx context.Context) {
 		default:
 		}
 
+		// Skip accounts that are already provisioned
+		if p.Provisioned[worker.AccountName] {
+			p.Logger.Info(worker.AccountName, "✅ Already provisioned - skipping")
+			continue
+		}
+
 		// Execute provision logic for the worker
-		// We ignore the specific return values here as the worker handles its own logging.
-		_, _, err := worker.Provision(ctx)
+		success, _, err := worker.Provision(ctx)
 		if err != nil {
 			p.Logger.Error(worker.AccountName, fmt.Sprintf("Cycle failed: %v", err))
+		}
+
+		// Mark as provisioned on success
+		if success {
+			p.Provisioned[worker.AccountName] = true
 		}
 
 		// Sleep between accounts (but not after the last one)
@@ -119,13 +138,14 @@ func (p *Provisioner) RunCycle(ctx context.Context) {
 
 // AccountWorker handles the provisioning logic for a single OCI account.
 type AccountWorker struct {
-	AccountName    string
-	Config         *config.AccountConfig
-	Logger         *logger.Logger
-	Notifier       *notifier.Notifier
-	Tracker        *notifier.Tracker
-	ComputeClient  ComputeClientOps
-	IdentityClient IdentityClientOps
+	AccountName          string
+	Config               *config.AccountConfig
+	Logger               *logger.Logger
+	Notifier             *notifier.Notifier
+	Tracker              *notifier.Tracker
+	ComputeClient        ComputeClientOps
+	IdentityClient       IdentityClientOps
+	VirtualNetworkClient VirtualNetworkClientOps
 }
 
 // getProvider loads the OCI credentials and creates a ConfigurationProvider.
@@ -192,9 +212,9 @@ func (w *AccountWorker) getProvider() (common.ConfigurationProvider, error) {
 	}, nil
 }
 
-// initClients initializes the OCI Compute and Identity clients if they haven't been already.
+// initClients initializes the OCI Compute, Identity, and VirtualNetwork clients if they haven't been already.
 func (w *AccountWorker) initClients() error {
-	if w.ComputeClient != nil && w.IdentityClient != nil {
+	if w.ComputeClient != nil && w.IdentityClient != nil && w.VirtualNetworkClient != nil {
 		return nil
 	}
 
@@ -218,6 +238,15 @@ func (w *AccountWorker) initClients() error {
 		}
 		w.IdentityClient = &client
 	}
+
+	if w.VirtualNetworkClient == nil {
+		client, err := core.NewVirtualNetworkClientWithConfigurationProvider(provider)
+		if err != nil {
+			return fmt.Errorf("failed to create virtual network client: %w", err)
+		}
+		w.VirtualNetworkClient = &client
+	}
+
 	return nil
 }
 
@@ -316,8 +345,30 @@ func (w *AccountWorker) Provision(parentCtx context.Context) (bool, bool, error)
 		return false, false, err
 	}
 
-	w.Logger.Success(w.AccountName, fmt.Sprintf("Instance Launched: %s", *resp.Instance.Id))
-	w.Notifier.SendSuccess(w.AccountName, *resp.Instance.Id, w.Config.Region)
+	// SUCCESS! Instance was launched.
+	instanceID := *resp.Instance.Id
+	w.Logger.Success(w.AccountName, fmt.Sprintf("Instance Launched: %s", instanceID))
+
+	// Extended verification with longer timeout context
+	verifyCtx, verifyCancel := context.WithTimeout(parentCtx, 6*time.Minute)
+	defer verifyCancel()
+
+	verified, verifyErr := w.VerifyInstance(verifyCtx, instanceID)
+	if verifyErr != nil {
+		w.Logger.Warn(w.AccountName, fmt.Sprintf("Verification warning: %v", verifyErr))
+	}
+
+	// Track success
+	w.Tracker.IncSuccess()
+
+	// Celebration Banner with terminal beep
+	w.Logger.Celebrate(w.AccountName, verified)
+
+	// Send notification with verified details - log any failures
+	if err := w.Notifier.SendSuccessVerified(w.AccountName, verified); err != nil {
+		w.Logger.Error(w.AccountName, fmt.Sprintf("Notification failed: %v", err))
+	}
+
 	return true, false, nil
 }
 

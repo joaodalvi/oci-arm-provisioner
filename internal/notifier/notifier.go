@@ -236,13 +236,128 @@ func (n *Notifier) SendSuccess(account, instanceID, region string) error {
 	return nil
 }
 
+// VerifiedInstanceDetails is an interface for receiving verified instance information.
+type VerifiedInstanceDetails interface {
+	GetInstanceID() string
+	GetPublicIP() string
+	GetOCPUs() float32
+	GetMemoryGB() float32
+	GetState() string
+	GetRegion() string
+}
+
+// SendSuccessVerified triggers a "Success" alert with verified instance details.
+// Includes Public IP and verified specs in notifications.
+func (n *Notifier) SendSuccessVerified(account string, details VerifiedInstanceDetails) error {
+	if details == nil {
+		return fmt.Errorf("no verified instance details provided")
+	}
+
+	var errs []error
+	instanceID := details.GetInstanceID()
+	region := details.GetRegion()
+	publicIP := details.GetPublicIP()
+	specs := fmt.Sprintf("%.0f OCPUs / %.0f GB RAM", details.GetOCPUs(), details.GetMemoryGB())
+	state := details.GetState()
+
+	if publicIP == "" {
+		publicIP = "Pending..."
+	}
+
+	// 1. Discord/Slack Webhook
+	if n.Config.WebhookURL != "" {
+		content := ""
+		if n.Config.InsistentPing {
+			content = "@everyone 🚀 Instance Provisioned & Verified!"
+		}
+		embed := discordEmbed{
+			Title: "✅ OCI Instance Launched & Verified",
+			Color: ColorSuccess,
+			Fields: []field{
+				{Name: "Account", Value: account, Inline: true},
+				{Name: "Region", Value: region, Inline: true},
+				{Name: "State", Value: state + " ✓", Inline: true},
+				{Name: "Public IP", Value: "`" + publicIP + "`", Inline: true},
+				{Name: "Specs", Value: specs, Inline: true},
+				{Name: "Instance ID", Value: "`" + instanceID + "`", Inline: false},
+			},
+			Footer: &footer{Text: "OCI ARM Provisioner • " + time.Now().Format("2006-01-02 15:04:05")},
+		}
+		if err := n.sendWebhook(discordPayload{Content: content, Embeds: []discordEmbed{embed}}); err != nil {
+			errs = append(errs, err)
+		}
+	}
+
+	// 2. Telegram
+	if n.Config.TelegramToken != "" {
+		msg := fmt.Sprintf("<b>🚀 Instance Launched & Verified!</b>\n\n"+
+			"<b>Account:</b> %s\n"+
+			"<b>Region:</b> %s\n"+
+			"<b>State:</b> %s ✓\n"+
+			"<b>Public IP:</b> <code>%s</code>\n"+
+			"<b>Specs:</b> %s\n"+
+			"<b>Instance ID:</b> <code>%s</code>",
+			account, region, state, publicIP, specs, instanceID)
+		if n.Config.InsistentPing {
+			msg = "🚨 <b>ATTENTION!</b> 🚨\n\n" + msg
+		}
+		if err := n.sendTelegram(msg); err != nil {
+			errs = append(errs, err)
+		}
+	}
+
+	// 3. Ntfy
+	if n.Config.NtfyTopic != "" {
+		priority := 4
+		if n.Config.InsistentPing {
+			priority = 5
+		}
+		msg := fmt.Sprintf("**Instance Launched & Verified!**\n\n"+
+			"**Account:** %s\n"+
+			"**Region:** %s\n"+
+			"**State:** %s ✓\n"+
+			"**Public IP:** `%s`\n"+
+			"**Specs:** %s\n"+
+			"**ID:** `%s`",
+			account, region, state, publicIP, specs, instanceID)
+		if err := n.sendNtfy(msg, "🚀 OCI Provision Success", priority, "tada,rocket,white_check_mark"); err != nil {
+			errs = append(errs, err)
+		}
+	}
+
+	// 4. Gotify
+	if n.Config.GotifyURL != "" {
+		priority := 8
+		if n.Config.InsistentPing {
+			priority = 10
+		}
+		msg := fmt.Sprintf("**Instance Launched & Verified!**\n\n"+
+			"**Account:** %s\n"+
+			"**Region:** %s\n"+
+			"**State:** %s ✓\n"+
+			"**Public IP:** `%s`\n"+
+			"**Specs:** %s\n"+
+			"**ID:** `%s`",
+			account, region, state, publicIP, specs, instanceID)
+		if err := n.sendGotify(msg, "🚀 OCI Provision Success", priority); err != nil {
+			errs = append(errs, err)
+		}
+	}
+
+	if len(errs) > 0 {
+		return fmt.Errorf("notification errors: %v", errs)
+	}
+	return nil
+}
+
 // Stats holds metrics for the digest
 type Stats struct {
-	StartTime      time.Time
-	TotalCycles    int
-	CapacityErrors int
-	OtherErrors    int
-	LastSuccess    time.Time
+	StartTime       time.Time
+	TotalCycles     int
+	CapacityErrors  int
+	OtherErrors     int
+	SuccessCount    int
+	LastSuccessTime time.Time
 }
 
 // SendDigest triggers a status report alert to all enabled providers.

@@ -22,12 +22,16 @@ const (
 	Gray   = "\033[37m"
 )
 
+// LogHook is a function that receives structured log events
+type LogHook func(level, account, msg string)
+
 // Logger handles concurrent logging to both stdout (console) and a file.
 // It ensures thread safety using a mutex.
 type Logger struct {
-	mu   sync.Mutex
-	out  io.Writer // Console output (Standard Output)
-	file io.Writer // File output (Append only)
+	mu    sync.Mutex
+	out   io.Writer // Console output (Standard Output)
+	file  io.Writer // File output (Append only)
+	hooks []LogHook
 }
 
 // New initializes a new Logger instance.
@@ -49,14 +53,25 @@ func New(logDir string) (*Logger, error) {
 	}
 
 	return &Logger{
-		out:  os.Stdout,
-		file: f,
+		out:   os.Stdout,
+		file:  f,
+		hooks: make([]LogHook, 0),
 	}, nil
+}
+
+// AddHook registers a function to be called on every log event
+func (l *Logger) AddHook(hook LogHook) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	l.hooks = append(l.hooks, hook)
 }
 
 // format constructs formatted strings for console (colored) and file (structured/timestamped) output.
 // returns (consoleMsg, fileMsg)
 func (l *Logger) format(level, color, icon, account, msg string) (string, string) {
+	// Trigger hooks
+	l.triggerHooks(level, account, msg)
+
 	now := time.Now()
 	tsConsole := now.Format("15:04:05")
 	tsFile := now.Format("2006/01/02 15:04:05")
@@ -76,12 +91,47 @@ func (l *Logger) format(level, color, icon, account, msg string) (string, string
 	return console, file
 }
 
+func (l *Logger) triggerHooks(level, account, msg string) {
+	// We don't lock here to avoid deadlocks if hook uses logger (though it shouldn't)
+	// But we need to protect the slice access? No, format is called under lock in most cases?
+	// Actually format is helpers.
+	// Let's protect hooks access.
+	// But wait, Write calls lock. Format does NOT lock.
+	// So we can lock/unlock here safely.
+	// But wait! All logging methods call format then write.
+	// format is just string construction.
+	// Let's check callers.
+	// Info/Warn etc call format() then write().
+	// write() locks. format() does NOT lock.
+	// So we can safely lock inside triggerHooks.
+	l.mu.Lock()
+	hooks := make([]LogHook, len(l.hooks))
+	copy(hooks, l.hooks)
+	l.mu.Unlock()
+
+	for _, h := range hooks {
+		h(level, account, msg)
+	}
+}
+
 // write securely writes strings to both outputs under a mutex lock.
 func (l *Logger) write(console, file string) {
 	l.mu.Lock()
 	defer l.mu.Unlock()
-	fmt.Fprint(l.out, console)
-	fmt.Fprint(l.file, file)
+	if l.out != nil {
+		fmt.Fprint(l.out, console)
+	}
+	if l.file != nil {
+		fmt.Fprint(l.file, file)
+	}
+}
+
+// SetConsoleOutput sets the destination for console logs.
+// Use io.Discard to silence console output.
+func (l *Logger) SetConsoleOutput(w io.Writer) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	l.out = w
 }
 
 // Info logs general informational messages.
@@ -131,4 +181,63 @@ func (l *Logger) Plain(msg string) {
 	// File: Timestamped Info
 	ts := time.Now().Format("2006/01/02 15:04:05")
 	fmt.Fprintf(l.file, "%s [INFO] %s\n", ts, msg)
+}
+
+// Celebrate logs a prominent success banner with instance details and a terminal beep.
+func (l *Logger) Celebrate(account string, details interface{}) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+
+	// Terminal beep
+	fmt.Fprint(l.out, "\a")
+
+	// ASCII Art Banner
+	banner := `
+` + Green + `
+╔═══════════════════════════════════════════════════════════════════════╗
+║                                                                       ║
+║   🚀🎉  SUCCESS! INSTANCE PROVISIONED SUCCESSFULLY!  🎉🚀            ║
+║                                                                       ║
+╚═══════════════════════════════════════════════════════════════════════╝
+` + Reset
+
+	fmt.Fprint(l.out, banner)
+
+	// Extract details if available
+	type verifiedDetails interface {
+		GetInstanceID() string
+		GetPublicIP() string
+		GetOCPUs() float32
+		GetMemoryGB() float32
+		GetState() string
+		GetRegion() string
+	}
+
+	// Try to extract structured details
+	if v, ok := details.(verifiedDetails); ok {
+		box := fmt.Sprintf(`
+%s┌─────────────────────────────────────────────────────────────────────┐%s
+%s│ Account:     %-55s │%s
+%s│ Instance ID: %-55s │%s
+%s│ Public IP:   %-55s │%s
+%s│ Specs:       %-55s │%s
+%s│ State:       %-55s │%s
+%s│ Region:      %-55s │%s
+%s└─────────────────────────────────────────────────────────────────────┘%s
+`,
+			Cyan, Reset,
+			Cyan, account, Reset,
+			Cyan, v.GetInstanceID(), Reset,
+			Cyan, v.GetPublicIP(), Reset,
+			Cyan, fmt.Sprintf("%.0f OCPUs / %.0f GB RAM", v.GetOCPUs(), v.GetMemoryGB()), Reset,
+			Cyan, v.GetState()+" ✓", Reset,
+			Cyan, v.GetRegion(), Reset,
+			Cyan, Reset,
+		)
+		fmt.Fprint(l.out, box)
+	}
+
+	// File logging
+	ts := time.Now().Format("2006/01/02 15:04:05")
+	fmt.Fprintf(l.file, "%s [SUCCESS] === INSTANCE PROVISIONED FOR ACCOUNT [%s] ===\n", ts, account)
 }
