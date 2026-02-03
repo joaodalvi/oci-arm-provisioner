@@ -1,6 +1,6 @@
 # Maintainer: Your Name <email@example.com>
 pkgname=oci-arm-provisioner
-pkgver=0.1.0
+pkgver=0.2.0
 pkgrel=1
 pkgdesc="Automated OCI ARM Instance Provisioner (Go)"
 arch=('x86_64' 'aarch64')

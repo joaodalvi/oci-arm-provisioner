@@ -68,7 +68,7 @@ func main() {
 
 	// Headless Mode (original behavior)
 	l.Section("🚀 OCI ARM Provisioner (Headless Mode)")
-	l.Plain(fmt.Sprintf("Version: %s", "0.1.0"))
+	l.Plain(fmt.Sprintf("Version: %s", "0.2.0"))
 	l.Plain(fmt.Sprintf("📂 Config: %s", path))
 
 	// Initialize Provisioner for headless mode
