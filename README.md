@@ -17,7 +17,7 @@
 
 **Eliminate "Out of Host Capacity" Errors Forever.**
 
-[Features](#-features) • [Installation](#-installation) • [Configuration](#%EF%B8%8F-configuration) • [Compliance](#-compliance--safety)
+[Features](#-features) • [Installation](#-installation) • [Configuration](#%EF%B8%8F-configuration) • [Compliance](#-compliance--safety) • [Changelog](CHANGELOG.md)
 
 </div>
 

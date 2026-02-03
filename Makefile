@@ -1,5 +1,5 @@
 BINARY_NAME=oci-arm-provisioner
-VERSION=0.2.0
+VERSION=0.2.1
 BUILD_FLAGS=-ldflags="-s -w"
 
 .PHONY: all build clean test run docker install uninstall check-env
